@@ -11,7 +11,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
     }
 
-    fun goToReadCard(view: View) {
+    fun goToReadCard(@SuppressWarnings("UnusedParameters") view: View) {
         val intent = Intent(this, ReadActivity::class.java)
         startActivity(intent)
     }

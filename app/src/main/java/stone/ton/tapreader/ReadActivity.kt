@@ -2,39 +2,51 @@ package stone.ton.tapreader
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.content.IntentFilter
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import android.nfc.tech.NfcA
 import android.nfc.tech.NfcB
 import android.os.AsyncTask
-import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
-import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
 import com.payneteasy.tlv.BerTag
-import com.payneteasy.tlv.BerTlvLogger
 import com.payneteasy.tlv.BerTlvParser
-import io.github.binaryfoo.RootDecoder
-import io.github.binaryfoo.TagInfo
 import java.io.IOException
-import java.io.OutputStreamWriter
-import java.util.function.Consumer
 
 class ReadActivity : AppCompatActivity() {
-    private var nfcAdapter /*!< represents the local NFC adapter */: NfcAdapter? = null
+    private lateinit var nfcAdapter: NfcAdapter
     private var tag /*!< represents an NFC tag that has been discovered */: Tag? = null
     private var tagcomm /*!< provides access to ISO-DEP (ISO 14443-4) properties and I/O operations on a Tag */: IsoDep? = null
-    private val nfctechfilter = arrayOf(arrayOf(NfcA::class.java.getName()), arrayOf<String>(NfcB::class.java.getName())) /*!<  NFC tech lists */
+    private var techListsArray = arrayOf(arrayOf<String>(IsoDep::class.java.name))
+    private lateinit var intentFiltersArray: Array<IntentFilter>
     private var nfcintent /*!< reference to a token maintained by the system describing the original data used to retrieve it */: PendingIntent? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_read)
+
+        val intent = Intent(this, javaClass).apply {
+            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        nfcintent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+
+        intentFiltersArray = arrayOf(IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED))
+
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
-        nfcintent = PendingIntent.getActivity(this, 0, Intent(this, javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0)
+        val extra = Bundle()
+        extra.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 1)
+        nfcAdapter.enableReaderMode(this, NfcAdapter.ReaderCallback
+            {
+                Log.i("Reader Mode",it.toString())
+                Log.i("Reader Mode",it.techList.toString())
+            },
+            (NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B),
+            extra
+        )
+
     }
 
     public override fun onResume() {
@@ -42,8 +54,7 @@ class ReadActivity : AppCompatActivity() {
             This method is called when user returns to the activity
          */
         super.onResume()
-        //nfcAdapter.enableReaderMode(this, NfcAdapter.FLAG_READER_NFC_A | NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK,null);
-        nfcAdapter!!.enableForegroundDispatch(this, nfcintent, null, nfctechfilter)
+        nfcAdapter.enableForegroundDispatch(this, nfcintent, intentFiltersArray, techListsArray)
     }
 
 
@@ -52,26 +63,30 @@ class ReadActivity : AppCompatActivity() {
             This method disable reader mode (enable emulation) when user leave the activity
          */
         super.onPause()
-        nfcAdapter!!.disableReaderMode(this)
-        //nfcAdapter.disableForegroundDispatch(this);
+        nfcAdapter.disableForegroundDispatch(this);
     }
 
 
     override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
         /*!
             This is called when NFC tag is detected
          */
-        super.onNewIntent(intent)
-        tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG)
-        Log.i("EMVemulator", "Tag detected")
-        CardReader().execute(tag)
+        if (NfcAdapter.ACTION_TECH_DISCOVERED == intent.action) {
+            tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG)
+            if(tag != null){
+                Log.i("EMVemulator", "Tag detected")
+                Log.i("TAG", tag.toString())
+                Log.i("TAG", tag!!.techList.toString())
+            }
+        }
     }
 
     /*!
        Inner class that allows to preform card reading in background
        and publish results on the UI thread without having to manipulate threads and handlers
    */
-    private inner class CardReader : AsyncTask<Tag?, String?, String?>() {
+    private open inner class CardReader : AsyncTask<Tag?, String?, String?>() {
         var cardtype /*!< string with card type */: String? = null
         var error /*!< string with error value */: String? = null
         override fun doInBackground(vararg params: Tag?): String? {
@@ -114,10 +129,10 @@ class ReadActivity : AppCompatActivity() {
                 val appTemplates = bf0c.findAll(BerTag(0x61))
                 for(appTemplate in appTemplates){
                     Log.i("EMV", "Application: " + appTemplate.find(BerTag(0x4f)).hexValue)
-                    Log.i("EMV", "Application: " + appTemplate.find(BerTag(0x50)).getTextValue())
+                    Log.i("EMV", "Application: " + appTemplate.find(BerTag(0x50)).textValue)
                 }
                 //myOutWriter.append(byte2Hex(recv).trimIndent())
-                var temp: String = "00 A4 04 00 07"
+                var temp = "00 A4 04 00 07"
                 temp += byte2Hex(recv).substring(80, 102)
                 temp += "00"
 
