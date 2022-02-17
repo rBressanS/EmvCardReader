@@ -7,13 +7,21 @@ import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import android.os.Bundle
+import android.text.method.ScrollingMovementMethod
 import android.util.Log
+import android.view.View
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.payneteasy.tlv.BerTag
+import com.payneteasy.tlv.BerTlv
+import com.payneteasy.tlv.BerTlvBuilder
 import com.payneteasy.tlv.BerTlvParser
 import stone.ton.tapreader.classes.apdu.APDUCommand
 import stone.ton.tapreader.classes.apdu.APDUResponse
+import stone.ton.tapreader.classes.apdu.DOL
+import stone.ton.tapreader.classes.apdu.TerminalDataBuilder
 import java.io.IOException
+
 
 class ReadActivity : AppCompatActivity() {
     private lateinit var nfcAdapter: NfcAdapter
@@ -24,6 +32,9 @@ class ReadActivity : AppCompatActivity() {
     private lateinit var intentFiltersArray: Array<IntentFilter>
     private var nfcintent /*!< reference to a token maintained by the system describing the original data used to retrieve it */: PendingIntent? =
         null
+    private var apduTrace: TextView? = null
+
+    private val parser = BerTlvParser()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,6 +43,8 @@ class ReadActivity : AppCompatActivity() {
         val intent = Intent(this, javaClass).apply {
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
+        apduTrace = findViewById(R.id.apduTrace)
+        apduTrace!!.movementMethod = ScrollingMovementMethod()
         nfcintent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
 
         intentFiltersArray = arrayOf(IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED))
@@ -44,34 +57,92 @@ class ReadActivity : AppCompatActivity() {
             {
                 Log.i("Reader Mode", it.toString())
                 Log.i("Reader Mode", it.techList.toString())
+                addToApduTrace("Reader Mode", it.toString())
+                addToApduTrace("Reader Tech", it.techList.toString())
                 tagcomm = IsoDep.get(it)
                 try {
                     tagcomm?.connect()
+                    addToApduTrace("Connected", "OK")
                 } catch (e: IOException) {
                     Log.i("EMVemulator", "Error tagcomm: " + e.message)
+                    addToApduTrace("ERROR", e.message.toString())
                     return@ReaderCallback
                 }
                 try {
-                    val getPPSEApdu = APDUCommand(
-                        class_ = 0x00,
-                        instruction = 0xA4.toByte(),
-                        parameter1 = 0x04,
-                        parameter2 = 0x00,
-                        data = "32 50 41 59 2E 53 59 53 2E 44 44 46 30 31 00".replace(" ","").decodeHex()
-                    )
-                    val recv = transceive(getPPSEApdu)
-                    val parser = BerTlvParser()
-                    val tlvsConstructed = parser.parseConstructed(recv.data)
-                    val a5 = tlvsConstructed.find(BerTag(0xA5))
+                    val getPPSEApdu = APDUCommand.getForSelectApplication("32 50 41 59 2E 53 59 53 2E 44 44 46 30 31".decodeHex())
+                    var receive = transceive(getPPSEApdu)
+
+                    val fciTemplate = parser.parseConstructed(receive.data)
+                    Log.i("TESTE", fciTemplate.toString())
+                    dumpBerTlv(fciTemplate)
+                    val a5 = fciTemplate.find(BerTag(0xA5))
                     val bf0c = a5.find(BerTag(0xbf, 0x0c))
-                    val appTemplates = bf0c.findAll(BerTag(0x61))
-                    for(appTemplate in appTemplates){
+                    val appTemplateList = bf0c.findAll(BerTag(0x61))
+                    val candidateList: ArrayList<String> = ArrayList()
+                    for(appTemplate in appTemplateList){
+                        //0x4F = ApplicationID
                         Log.i("EMV", "Application: " + appTemplate.find(BerTag(0x4f)).hexValue)
+                        //0x50 = Application Label
                         Log.i("EMV", "Application: " + appTemplate.find(BerTag(0x50)).textValue)
+                        //0x87 = Application Priority Indicator
+                        addToApduTrace("PPSE", appTemplate.find(BerTag(0x87)).hexValue +"-" + appTemplate.find(BerTag(0x4f)).hexValue + "-" + appTemplate.find(BerTag(0x50)).textValue)
+                        candidateList.add(appTemplate.find(BerTag(0x4f)).hexValue)
+                    }
+                    val getAppData = APDUCommand.getForSelectApplication(candidateList.get(0).decodeHex())
+                    receive = transceive(getAppData)
+                    val fciTemplateApp = parser.parseConstructed(receive.data)
+                    Log.i("TESTE", fciTemplateApp.toString())
+                    dumpBerTlv(fciTemplateApp)
+
+                    var fullPdol = ""
+                    var pdolValue = "";
+
+                    if(fciTemplateApp.find(BerTag(0xA5)).find(BerTag(0x9F, 0x38))!=null){
+                        val PDOL = DOL(fciTemplateApp.find(BerTag(0xA5)).find(BerTag(0x9F, 0x38)).bytesValue)
+                        val terminalData = TerminalDataBuilder()
+                        for(entry in PDOL.requiredTags){
+                            if(terminalData.terminalTags.containsKey(entry.key) && terminalData.terminalTags[entry.key]!!.length == entry.value*2){
+                                pdolValue += terminalData.terminalTags[entry.key]
+                            }else{
+                                pdolValue += "0".repeat(entry.value*2)
+                            }
+                        }
+                        fullPdol = byte2Hex(BerTlvBuilder().addBytes(BerTag(0x83), pdolValue.decodeHex()).buildArray())
+                    }else{
+                        fullPdol = "8300"
+                    }
+                    val internalAuthenticate = APDUCommand(
+                        class_ = 0x80.toByte(),
+                        instruction = 0xA8.toByte(),
+                        parameter1 = 0x00,
+                        parameter2 = 0x00,
+                        data = fullPdol.decodeHex()
+                    )
+                    receive = transceive(internalAuthenticate)
+                    val responseTemplate = parser.parseConstructed(receive.data)
+                    Log.i("TESTE", responseTemplate.toString())
+                    dumpBerTlv(responseTemplate)
+                    val aflValue = responseTemplate.find(BerTag(0x94))
+                    val aflEntries = aflValue.hexValue.chunked(8)
+                    for(aflEntry in aflEntries){
+                        val sfi = aflEntry.subSequence(0,2).toString().decodeHex()[0]
+                        val start = aflEntry.subSequence(2,4).toString().decodeHex()[0]
+                        val end = aflEntry.subSequence(4,6).toString().decodeHex()[0]
+                        val sign = aflEntry.subSequence(6,8).toString().decodeHex()[0] > 0x00
+                        for(record in start..end){
+                            val sfiP2 = (sfi.toInt()) + 4
+                            val readRecord = APDUCommand.getForReadRecord(sfiP2.toByte(), record.toByte())
+                            receive = transceive(readRecord)
+                            val responseTemplate = parser.parseConstructed(receive.data)
+                            Log.i("TESTE", responseTemplate.toString())
+                            dumpBerTlv(responseTemplate)
+                        }
+
                     }
                     tagcomm?.close()
                 } catch (e: IOException) {
                     Log.i("EMVemulator", "Error tranceive: " + e.message)
+                    addToApduTrace("ERROR", e.message.toString())
                 }
             },
             (NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B),
@@ -80,10 +151,49 @@ class ReadActivity : AppCompatActivity() {
 
     }
 
-    private fun String.decodeHex(): ByteArray {
-        check(length % 2 == 0) { "Must have an even length" }
+    private fun isPureAscii(s: ByteArray?): Boolean {
+        var result = true
+        if (s != null) {
+            for (i in s.indices) {
+                val c = s[i].toInt()
+                if (c < 31 || c > 127) {
+                    result = false
+                    break
+                }
+            }
+        }
+        return result
+    }
 
-        return chunked(2)
+    fun dumpBerTlv(tlv:BerTlv, level: Int = 0){
+        val lvlDump = " ".repeat(level)
+        if(tlv.isPrimitive){
+            val isAscii: Boolean = isPureAscii(tlv.bytesValue)
+            if(isAscii){
+                Log.i("TLV", lvlDump + tlv.tag.toString() + " - " + tlv.hexValue + " (" + tlv.textValue + ")")
+            }else{
+                Log.i("TLV", lvlDump + tlv.tag.toString() + " - " + tlv.hexValue)
+            }
+        }else{
+            Log.i("TLV", lvlDump + tlv.tag.toString())
+            for (tag in tlv.values){
+                dumpBerTlv(tag, level+1)
+            }
+        }
+    }
+
+    fun clearTrace(@SuppressWarnings("UnusedParameters") view: View) {
+        apduTrace!!.text = ""
+    }
+
+    private fun addToApduTrace(tag:String, chars: CharSequence){
+        //apduTrace!!.append("$tag: $chars\n")
+    }
+
+    private fun String.decodeHex(): ByteArray {
+        check((this.replace(" ", "").length % 2) == 0) { "Must have an even length" }
+
+        return replace(" ", "").chunked(2)
             .map { it.toInt(16).toByte() }
             .toByteArray()
     }
@@ -130,49 +240,11 @@ class ReadActivity : AppCompatActivity() {
             bytes[i] = hexbytes[i].toInt(16).toByte()
         }
         Log.i("EMVemulator", "Send: " + byte2Hex(bytes))
+        addToApduTrace("Send", byte2Hex(bytes))
         val recv = tagcomm!!.transceive(bytes)
         Log.i("EMVemulator", "Received: " + byte2Hex(recv))
+        addToApduTrace("Receive", byte2Hex(recv))
         return APDUResponse(fullData = recv)
     }
-
-/*
-        private fun readCard() {
-            /*!
-                This method reads all data from card to perform successful Mag-Stripe
-                transaction and saves them to file.
-             */
-            try {
-                //val fOut = openFileOutput("EMV.card", MODE_PRIVATE)
-                //val myOutWriter = OutputStreamWriter(fOut)
-                var recv = transceive("00 A4 04 00 0E 32 50 41 59 2E 53 59 53 2E 44 44 46 30 31 00")
-                val parser = BerTlvParser()
-                val tlvsConstructed = parser.parseConstructed(recv)
-                val a5 = tlvsConstructed.find(BerTag(0xA5))
-                val bf0c = a5.find(BerTag(0xbf, 0x0c))
-                val appTemplates = bf0c.findAll(BerTag(0x61))
-                for(appTemplate in appTemplates){
-                    Log.i("EMV", "Application: " + appTemplate.find(BerTag(0x4f)).hexValue)
-                    Log.i("EMV", "Application: " + appTemplate.find(BerTag(0x50)).textValue)
-                }
-                //myOutWriter.append(byte2Hex(recv).trimIndent())
-                var temp = "00 A4 04 00 07"
-                temp += byte2Hex(recv).substring(80, 102)
-                temp += "00"
-
-                if (temp.matches(Regex.fromLiteral("00 A4 04 00 07 A0 00 00 00 04 10 10 00"))) cardtype = "MasterCard"
-                if (temp.matches(Regex.fromLiteral("00 A4 04 00 07 A0 00 00 00 04 30 60 00"))) cardtype = "Maestro"
-                if (temp.matches(Regex.fromLiteral("00 A4 04 00 07 A0 00 00 00 03 20 10 00"))) cardtype = "Visa Electron"
-                if (temp.matches(Regex.fromLiteral("00 A4 04 00 07 A0 00 00 00 03 10 10 00"))) cardtype = "Visa"
-                recv = transceive(temp)
-                //myOutWriter.append(byte2Hex(recv).trimIndent())
-                Log.i("EMVemulator", "Done!")
-                //myOutWriter.close()
-                //fOut.close()
-            } catch (e: IOException) {
-                Log.i("EMVemulator", "Error readCard: " + e.message)
-                error = "Reading card data ... Error readCard: " + e.message
-            }
-        }
-*/
 
 }
