@@ -94,7 +94,7 @@ class ReadActivity : AppCompatActivity() {
                     Log.i("TESTE", fciTemplateApp.toString())
                     dumpBerTlv(fciTemplateApp)
 
-                    var fullPdol = ""
+                    val fullPdol: String
                     var pdolValue = "";
 
                     if(fciTemplateApp.find(BerTag(0xA5)).find(BerTag(0x9F, 0x38))!=null){
@@ -128,14 +128,14 @@ class ReadActivity : AppCompatActivity() {
                         val sfi = aflEntry.subSequence(0,2).toString().decodeHex()[0]
                         val start = aflEntry.subSequence(2,4).toString().decodeHex()[0]
                         val end = aflEntry.subSequence(4,6).toString().decodeHex()[0]
-                        val sign = aflEntry.subSequence(6,8).toString().decodeHex()[0] > 0x00
+                        val isSigned = aflEntry.subSequence(6,8).toString().decodeHex()[0] > 0x00
                         for(record in start..end){
                             val sfiP2 = (sfi.toInt()) + 4
                             val readRecord = APDUCommand.getForReadRecord(sfiP2.toByte(), record.toByte())
                             receive = transceive(readRecord)
-                            val responseTemplate = parser.parseConstructed(receive.data)
-                            Log.i("TESTE", responseTemplate.toString())
-                            dumpBerTlv(responseTemplate)
+                            val readRecordResponse = parser.parseConstructed(receive.data)
+                            Log.i("TESTE", readRecordResponse.toString())
+                            dumpBerTlv(readRecordResponse)
                         }
 
                     }
@@ -187,7 +187,7 @@ class ReadActivity : AppCompatActivity() {
     }
 
     private fun addToApduTrace(tag:String, chars: CharSequence){
-        //apduTrace!!.append("$tag: $chars\n")
+        apduTrace!!.append("$tag: $chars\n")
     }
 
     private fun String.decodeHex(): ByteArray {
