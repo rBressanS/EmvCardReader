@@ -190,7 +190,7 @@ class ReadActivity : AppCompatActivity() {
         apduTrace!!.text = ""
     }
 
-    private fun addToApduTrace(tag: String, chars: CharSequence) {
+    private fun addToApduTrace(tag:String, chars: CharSequence){
         apduTrace!!.append("$tag: $chars\n")
     }
 
