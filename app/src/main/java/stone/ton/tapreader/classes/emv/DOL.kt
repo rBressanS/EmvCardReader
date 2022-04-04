@@ -1,14 +1,15 @@
-package stone.ton.tapreader.classes.apdu
+package stone.ton.tapreader.classes.emv
 
 import kotlin.experimental.and
 
 class DOL(fullDol: ByteArray) {
 
     var requiredTags: MutableMap<String, Int>
+
     init {
         var remainingData = fullDol
         requiredTags = HashMap()
-        while(remainingData.isNotEmpty()){
+        while (remainingData.isNotEmpty()) {
             var returnable = getTag(remainingData)
             remainingData = returnable["REMAINING"]!!
             val tag = returnable["TAG"]!!
@@ -35,31 +36,31 @@ class DOL(fullDol: ByteArray) {
         var nextByteCounter = 0
         val firstTagByte = fullData[nextByteCounter++]
         tagBytes += firstTagByte
-        if(matchMask(firstTagByte, 0b11111)){
+        if (matchMask(firstTagByte, 0b11111)) {
             var newByte = fullData[nextByteCounter++]
             tagBytes += newByte
-            while(matchMask(newByte, 0b10000000.toByte())){
+            while (matchMask(newByte, 0b10000000.toByte())) {
                 newByte = fullData[nextByteCounter++]
                 tagBytes += newByte
             }
         }
         var remaining = ByteArray(0)
-        remaining += fullData.takeLast(fullData.size-nextByteCounter)
+        remaining += fullData.takeLast(fullData.size - nextByteCounter)
         return mapOf("TAG" to tagBytes, "REMAINING" to remaining)
     }
 
-    fun getLength(fullData: ByteArray): Map<String, ByteArray>{
+    fun getLength(fullData: ByteArray): Map<String, ByteArray> {
         var nextByteCounter = 0
         var lenBytes = ByteArray(0)
         lenBytes += fullData[nextByteCounter++]
         var remaining = ByteArray(0)
-        remaining += fullData.takeLast(fullData.size-nextByteCounter)
+        remaining += fullData.takeLast(fullData.size - nextByteCounter)
         return mapOf("LENGTH" to lenBytes, "REMAINING" to remaining)
     }
 
-        private fun matchMask(byte: Byte, mask: Byte): Boolean {
-            return (byte and mask == mask)
-        }
+    private fun matchMask(byte: Byte, mask: Byte): Boolean {
+        return (byte and mask == mask)
+    }
 
 
 }

@@ -6,8 +6,15 @@ class APDUResponse(fullData: ByteArray) {
     var data: ByteArray = ByteArray(0)
 
     init {
-        sw2 = fullData.dropLast(1)[0]
-        sw1 = fullData.dropLast(1)[0]
-        data = fullData.copyOf()
+        var response = fullData
+        sw2 = response.last()
+        response = response.dropLast(1).toByteArray()
+        sw1 = response.last()
+        response = response.dropLast(1).toByteArray()
+        data = response.copyOf()
+    }
+
+    fun wasSuccessful(): Boolean {
+        return sw1 == 0x90.toByte() && sw2 == 0.toByte()
     }
 }

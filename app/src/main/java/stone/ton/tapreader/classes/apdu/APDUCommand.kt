@@ -10,15 +10,14 @@ class APDUCommand(
 ) {
 
 
-
-    fun getAsBytes(): ByteArray{
-         var bytes = ByteArray(4)
-         bytes[0] = class_
-         bytes[1] = instruction
-         bytes[2] = parameter1
-         bytes[3] = parameter2
-        if(data != null){
-            if(data!!.isNotEmpty()){
+    fun getAsBytes(): ByteArray {
+        var bytes = ByteArray(4)
+        bytes[0] = class_
+        bytes[1] = instruction
+        bytes[2] = parameter1
+        bytes[3] = parameter2
+        if (data != null) {
+            if (data!!.isNotEmpty()) {
                 bytes += (data!!.size).toByte()
                 bytes += data!!
             }
@@ -29,7 +28,7 @@ class APDUCommand(
     }
 
     companion object {
-        fun getForSelectApplication(aid: ByteArray): APDUCommand{
+        fun getForSelectApplication(aid: ByteArray): APDUCommand {
             return APDUCommand(
                 class_ = 0x00,
                 instruction = 0xA4.toByte(),
@@ -39,7 +38,17 @@ class APDUCommand(
             )
         }
 
-        fun getForReadRecord(sfi: Byte, record: Byte): APDUCommand{
+        fun getForGetProcessingOptions(pdol: ByteArray): APDUCommand {
+            return APDUCommand(
+                class_ = 0x80.toByte(),
+                instruction = 0xA8.toByte(),
+                parameter1 = 0x00,
+                parameter2 = 0x00,
+                data = pdol
+            )
+        }
+
+        fun getForReadRecord(sfi: Byte, record: Byte): APDUCommand {
             return APDUCommand(
                 class_ = 0x00,
                 instruction = 0xB2.toByte(),
