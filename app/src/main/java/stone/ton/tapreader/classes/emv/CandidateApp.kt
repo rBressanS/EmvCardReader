@@ -8,5 +8,5 @@ class CandidateApp(appTag: BerTlv) {
 
     val priority = appTag.find(BerTag(0x87)).bytesValue
 
-    val label = appTag.find(BerTag(0x50)).bytesValue
+    val label = appTag.find(BerTag(0x50))?.bytesValue
 }
