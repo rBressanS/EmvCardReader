@@ -31,7 +31,20 @@ class EntryPoint(
     private val parser = BerTlvParser()
     private var tagcomm: IsoDep? = null
 
+    fun pickApplicationFromCandidateList(terminalList: List<String>, cardList: List<CandidateApp>): CandidateApp? {
+        var chosenApp: CandidateApp? = null
+        for (cardApp in cardList){
+            if(terminalList.contains(byte2Hex(cardApp.aid).replace(" ",""))){
+                if(chosenApp == null || cardApp.priority[0] < chosenApp.priority[0]){
+                    chosenApp = cardApp
+                }
+            }
+        }
+        return chosenApp
+    }
+
     fun readCardData() {
+        val terminalCandidateList = buildCandidateList(10, "credit")
         val intent = Intent(readActivity, javaClass).apply {
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
@@ -68,8 +81,10 @@ class EntryPoint(
                         val getPPSEApdu =
                             APDUCommand.getForSelectApplication("32 50 41 59 2E 53 59 53 2E 44 44 46 30 31".decodeHex())
                         val ppseResponse = transceive(getPPSEApdu)
-                        val candidateList = parsePPSEResponse(ppseResponse)
-                        val getAppData = APDUCommand.getForSelectApplication(candidateList[1].aid)
+                        val cardCandidateList = parsePPSEResponse(ppseResponse)
+                        val selectableApp = pickApplicationFromCandidateList(terminalCandidateList, cardCandidateList)
+                            ?: return@ReaderCallback
+                        val getAppData = APDUCommand.getForSelectApplication(selectableApp.aid)
                         var appResponse = transceive(getAppData)
                         val fullPdol = buildPDOLValue(
                             parser.parseConstructed(appResponse.data).find(BerTag(0xA5))
@@ -224,6 +239,36 @@ class EntryPoint(
         }
         return response
     }
+
+    private fun buildCandidateList(
+        amount: Int,
+        additionalFilter: String = "",
+        transactionType: String? = "00",
+    ): ArrayList<String> {
+        val candidateList = ArrayList<String>()
+        for (kernel in kernels) {
+            for (kernelApp in kernel.kernelApplications) {
+                if (additionalFilter != "" && kernelApp.filteringSelector != additionalFilter) {
+                    continue
+                }
+                for (transactionConfig in kernelApp.transactionConfig) {
+                    if (transactionConfig.transactionType == transactionType) {
+                        if (!transactionConfig.zeroAmountAllowedFlag && amount == 0) {
+                            continue
+                        }
+                        if (transactionConfig.readerContactlessTransactionLimit != null) {
+                            if (amount >= transactionConfig.readerContactlessTransactionLimit!!) {
+                                continue
+                            }
+                        }
+                    }
+                }
+                candidateList.addAll(kernelApp.aids)
+            }
+        }
+        return candidateList
+    }
+
 
     val readerCombinations: ArrayList<EntryPointCombination> = arrayListOf(
         EntryPointCombination("A0000000041010", 4),
