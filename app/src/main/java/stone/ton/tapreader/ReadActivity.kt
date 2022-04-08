@@ -15,6 +15,8 @@ class ReadActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        var amount = intent.getStringExtra("amount")
+        var payment_type = intent.getStringExtra("payment_type")
         setContentView(R.layout.activity_read)
         val pos = Pos(this)
         apduTrace = findViewById(R.id.apduTrace)
