@@ -16,7 +16,7 @@ class DOL(fullDol: ByteArray) {
             returnable = getLength(remainingData)
             remainingData = returnable["REMAINING"]!!
             val length = returnable["LENGTH"]!!
-            requiredTags[byte2Hex(tag)] = length[0].toInt()
+            requiredTags[byte2Hex(tag).replace(" ", "")] = length[0].toInt()
         }
     }
 

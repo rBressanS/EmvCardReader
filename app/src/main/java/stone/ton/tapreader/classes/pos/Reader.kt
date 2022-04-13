@@ -13,8 +13,8 @@ class Reader(
 
     val EP = EntryPoint(readActivity, kernels, terminalTags)
 
-    fun readCardData() {
-        EP.readCardData()
+    fun readCardData(amount: Int?, paymentType: String?) {
+        EP.readCardData(amount!!, paymentType!!)
     }
 
     fun restartTransactino() {

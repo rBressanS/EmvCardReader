@@ -9,4 +9,8 @@ class CandidateApp(appTag: BerTlv) {
     val priority = appTag.find(BerTag(0x87)).bytesValue
 
     val label = appTag.find(BerTag(0x50))?.bytesValue
+
+    val kernelIdentifier = appTag.find(BerTag(0x9f,0x2a))?.bytesValue
+    val extendedSelection = appTag.find(BerTag(0x9f,0x29))?.bytesValue
+    val asrpd = appTag.find(BerTag(0x9f,0x0a))?.bytesValue
 }

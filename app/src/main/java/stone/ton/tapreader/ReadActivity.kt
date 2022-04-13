@@ -1,7 +1,7 @@
 package stone.ton.tapreader
 
 import android.os.Bundle
-import android.view.View
+import android.text.method.ScrollingMovementMethod
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -10,27 +10,31 @@ import stone.ton.tapreader.classes.pos.Pos
 
 class ReadActivity : AppCompatActivity() {
 
-    private var apduTrace: TextView? = null
-    private var clearTraceBtn: Button? = null
+    private lateinit var apduTrace: TextView
+    private lateinit var clearTraceBtn: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         var amount = intent.getStringExtra("amount")
-        var payment_type = intent.getStringExtra("payment_type")
+        var paymentType = intent.getStringExtra("payment_type")
         setContentView(R.layout.activity_read)
         val pos = Pos(this)
-        apduTrace = findViewById(R.id.apduTrace)
+        apduTrace = findViewById<TextView>(R.id.apduTrace)
         clearTraceBtn = findViewById(R.id.clear_text)
-        clearTraceBtn!!.setOnClickListener { clearTrace() }
-        pos.reader.readCardData()
+        clearTraceBtn.setOnClickListener { clearTrace() }
+        pos.reader.readCardData(Integer.parseInt(amount!!,10), paymentType)
+        apduTrace.movementMethod = ScrollingMovementMethod()
     }
 
     fun clearTrace() {
-        apduTrace!!.text = ""
+        apduTrace.text = ""
     }
 
     fun addToApduTrace(tag: String, chars: CharSequence) {
-        apduTrace!!.append("$tag: $chars\n")
+        val newText = apduTrace.text.toString() + "\n" + tag + ":" + chars
+        apduTrace.text = newText
+        //val editable: Editable = apduTrace.editableText
+        //Selection.setSelection(editable, editable.length)
     }
 
     var onResumeCallback: (() -> Unit)? = null
