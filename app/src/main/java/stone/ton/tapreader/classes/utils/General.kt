@@ -16,6 +16,26 @@ class General {
             }
             return result
         }
+
+        fun ByteArray.toHex(): String {
+            /*!
+            This method converts bytes to strings of hex
+            */
+            val result = StringBuilder()
+            for (inputbyte in this) {
+                result.append(String.format("%02X" + " ", inputbyte))
+            }
+            return result.toString().trim()
+        }
+
+        fun String.decodeHex(): ByteArray {
+            check((this.replace(" ", "").length % 2) == 0) { "Must have an even length" }
+
+            return replace(" ", "").chunked(2)
+                .map { it.toInt(16).toByte() }
+                .toByteArray()
+        }
     }
+
 
 }

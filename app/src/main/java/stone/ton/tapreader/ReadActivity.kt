@@ -1,14 +1,23 @@
 package stone.ton.tapreader
 
+import android.app.PendingIntent
+import android.content.Intent
+import android.content.IntentFilter
+import android.nfc.NfcAdapter
+import android.nfc.tech.IsoDep
+import android.os.Build
 import android.os.Bundle
 import android.text.method.ScrollingMovementMethod
 import android.widget.Button
 import android.widget.TextView
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import stone.ton.tapreader.classes.pos.Pos
+import stone.ton.tapreader.classes.pos.interfaces.CardPoller
+import stone.ton.tapreader.classes.pos.readercomponents.EmvReaderCallback
 
 
-class ReadActivity : AppCompatActivity() {
+class ReadActivity : AppCompatActivity(), CardPoller {
 
     private lateinit var apduTrace: TextView
     private lateinit var clearTraceBtn: Button
@@ -55,6 +64,39 @@ class ReadActivity : AppCompatActivity() {
          */
         super.onPause()
         onPauseCallback?.invoke()
+    }
+
+    @RequiresApi(Build.VERSION_CODES.M)
+    override fun startCardPolling(readerCallback: NfcAdapter.ReaderCallback) {
+        val intent = Intent(this, javaClass).apply {
+            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        val nfcintent =
+            PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+
+        val intentFiltersArray = arrayOf(IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED))
+
+        val nfcAdapter = NfcAdapter.getDefaultAdapter(this)
+        val extra = Bundle()
+        extra.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 1000)
+        this.onResumeCallback = {
+            nfcAdapter.enableForegroundDispatch(
+                this,
+                nfcintent,
+                intentFiltersArray,
+                arrayOf(arrayOf<String>(IsoDep::class.java.name))
+            )
+            nfcAdapter.enableReaderMode(
+                this,
+                readerCallback,
+                (NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B),
+                extra
+            )
+        }
+        this.onPauseCallback = {
+            nfcAdapter.disableForegroundDispatch(this)
+            nfcAdapter.disableReaderMode(this)
+        }
     }
 
 }
