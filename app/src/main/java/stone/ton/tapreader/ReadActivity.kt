@@ -13,11 +13,12 @@ import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import stone.ton.tapreader.classes.pos.Pos
-import stone.ton.tapreader.classes.pos.interfaces.CardPoller
-import stone.ton.tapreader.classes.pos.readercomponents.EmvReaderCallback
+import stone.ton.tapreader.classes.pos.interfaces.ICardPoller
+import stone.ton.tapreader.classes.pos.interfaces.IUIProcessor
+import stone.ton.tapreader.classes.pos.readercomponents.process.process_d.UserInterfaceRequestData
 
 
-class ReadActivity : AppCompatActivity(), CardPoller {
+class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
 
     private lateinit var apduTrace: TextView
     private lateinit var clearTraceBtn: Button
@@ -27,11 +28,11 @@ class ReadActivity : AppCompatActivity(), CardPoller {
         var amount = intent.getStringExtra("amount")
         var paymentType = intent.getStringExtra("payment_type")
         setContentView(R.layout.activity_read)
-        val pos = Pos(this)
+        val pos = Pos(this, this, this)
         apduTrace = findViewById<TextView>(R.id.apduTrace)
         clearTraceBtn = findViewById(R.id.clear_text)
         clearTraceBtn.setOnClickListener { clearTrace() }
-        pos.reader.readCardData(Integer.parseInt(amount!!,10), paymentType)
+        pos.reader.startByProcess(Integer.parseInt(amount!!,10), paymentType)
         apduTrace.movementMethod = ScrollingMovementMethod()
     }
 
@@ -97,6 +98,10 @@ class ReadActivity : AppCompatActivity(), CardPoller {
             nfcAdapter.disableForegroundDispatch(this)
             nfcAdapter.disableReaderMode(this)
         }
+    }
+
+    override fun processUird(userInterfaceRequestData: UserInterfaceRequestData) {
+        addToApduTrace("User Message", userInterfaceRequestData.messageIdentifier.name)
     }
 
 }

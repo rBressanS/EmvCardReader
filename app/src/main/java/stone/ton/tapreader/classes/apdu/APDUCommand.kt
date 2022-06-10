@@ -1,5 +1,7 @@
 package stone.ton.tapreader.classes.apdu
 
+import stone.ton.tapreader.classes.utils.General.Companion.decodeHex
+
 class APDUCommand(
     var class_: Byte,
     var instruction: Byte,
@@ -28,6 +30,10 @@ class APDUCommand(
     }
 
     companion object {
+        fun getForSelectApplication(aid: String): APDUCommand {
+            return getForSelectApplication(aid.decodeHex())
+        }
+
         fun getForSelectApplication(aid: ByteArray): APDUCommand {
             return APDUCommand(
                 class_ = 0x00,

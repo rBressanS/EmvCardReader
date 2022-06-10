@@ -6,6 +6,8 @@ import com.payneteasy.tlv.BerTlv
 class CandidateApp(appTag: BerTlv) {
     val aid = appTag.find(BerTag(0x4f)).bytesValue
 
+    var kernelId:Int = 0
+
     val priority = appTag.find(BerTag(0x87)).bytesValue
 
     val label = appTag.find(BerTag(0x50))?.bytesValue

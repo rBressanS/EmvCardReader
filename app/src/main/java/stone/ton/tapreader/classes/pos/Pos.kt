@@ -5,9 +5,11 @@ import stone.ton.tapreader.ReadActivity
 import stone.ton.tapreader.classes.dataclasses.CaPublicKey
 import stone.ton.tapreader.classes.dataclasses.TerminalTag
 import stone.ton.tapreader.classes.dataclasses.kernel.KernelData
+import stone.ton.tapreader.classes.pos.interfaces.ICardPoller
+import stone.ton.tapreader.classes.pos.interfaces.IUIProcessor
 import stone.ton.tapreader.classes.utils.AssetsParser
 
-class Pos(readActivity: ReadActivity) {
+class Pos(readActivity: ReadActivity, cardPoller: ICardPoller, uiProcessor:IUIProcessor) {
     val terminalTags = getTerminalTags(readActivity)
     val caPublicKeys = getCaPublicKeys(readActivity)
     val kernels = getKernels(readActivity)
@@ -24,6 +26,6 @@ class Pos(readActivity: ReadActivity) {
         return AssetsParser.parseAsset(context, "terminal_config/kernels")
     }
 
-    val reader: Reader = Reader(readActivity, kernels, terminalTags)
+    val reader: Reader = Reader(readActivity, kernels, terminalTags, cardPoller, uiProcessor)
 
 }
