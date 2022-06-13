@@ -3,6 +3,7 @@ package stone.ton.tapreader.classes.pos.readercomponents.process
 import stone.ton.tapreader.classes.pos.readercomponents.process.process_d.ProcessDisplay
 import stone.ton.tapreader.classes.pos.readercomponents.process.process_d.UserInterfaceRequestData
 import stone.ton.tapreader.classes.pos.interfaces.ICardConnection
+import stone.ton.tapreader.classes.pos.interfaces.IProcess
 
 class ProcessMain(
     val processP: ProcessPCD,

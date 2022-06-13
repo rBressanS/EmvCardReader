@@ -9,6 +9,7 @@ import stone.ton.tapreader.classes.dataclasses.kernel.KernelData
 import stone.ton.tapreader.classes.emv.CandidateApp
 import stone.ton.tapreader.classes.utils.General.Companion.toHex
 import stone.ton.tapreader.classes.pos.interfaces.ICardConnection
+import stone.ton.tapreader.classes.pos.interfaces.IProcess
 
 class ProcessSelection(private val kernels: List<KernelData>) : IProcess {
     //TODO improve dataset for each transaction type

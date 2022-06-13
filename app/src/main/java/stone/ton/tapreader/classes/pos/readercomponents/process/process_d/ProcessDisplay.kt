@@ -1,7 +1,7 @@
 package stone.ton.tapreader.classes.pos.readercomponents.process.process_d
 
 import stone.ton.tapreader.classes.pos.interfaces.IUIProcessor
-import stone.ton.tapreader.classes.pos.readercomponents.process.IProcess
+import stone.ton.tapreader.classes.pos.interfaces.IProcess
 import kotlin.math.pow
 
 class ProcessDisplay(var uirdProcessor: IUIProcessor) : IProcess {
@@ -19,6 +19,10 @@ class ProcessDisplay(var uirdProcessor: IUIProcessor) : IProcess {
 
     public fun processUserInterfaceRequestData(uird: UserInterfaceRequestData) {
         uirdProcessor.processUird(uird)
+    }
+
+    fun receiveMsgSignal(uird: UserInterfaceRequestData){
+
     }
 
 

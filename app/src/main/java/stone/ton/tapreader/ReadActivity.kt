@@ -12,11 +12,11 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import dagger.hilt.android.AndroidEntryPoint
 import stone.ton.tapreader.classes.pos.Pos
 import stone.ton.tapreader.classes.pos.interfaces.ICardPoller
 import stone.ton.tapreader.classes.pos.interfaces.IUIProcessor
 import stone.ton.tapreader.classes.pos.readercomponents.process.process_d.UserInterfaceRequestData
-
 
 class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
 
@@ -25,8 +25,8 @@ class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        var amount = intent.getStringExtra("amount")
-        var paymentType = intent.getStringExtra("payment_type")
+        val amount = intent.getStringExtra("amount")
+        val paymentType = intent.getStringExtra("payment_type")
         setContentView(R.layout.activity_read)
         val pos = Pos(this, this, this)
         apduTrace = findViewById<TextView>(R.id.apduTrace)
