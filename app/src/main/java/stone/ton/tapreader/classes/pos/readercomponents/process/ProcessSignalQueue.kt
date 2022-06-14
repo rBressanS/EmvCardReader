@@ -1,17 +1,23 @@
 package stone.ton.tapreader.classes.pos.readercomponents.process
 
-import java.util.Queue
-import java.util.concurrent.ArrayBlockingQueue
-import java.util.concurrent.BlockingQueue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
+import stone.ton.tapreader.classes.pos.interfaces.IProcessSignal
 
-class ProcessSignalQueue{
-    companion object{
 
-        val myQueue = ArrayBlockingQueue<SignalMessage>(9)
+object ProcessSignalQueue{
 
-        data class SignalMessage(val processFrom:ProcessType, val processTo: ProcessType, val signal:String, val params:Map<String, Any>)
-        enum class ProcessType{
-            PROCESS_D, PROCESS_P, PROCESS_S
+    val myQueue = Channel<IProcessSignal>()
+
+    var scope = CoroutineScope(Dispatchers.Default)
+
+    fun start(){
+        scope.launch{
+            for (signal in myQueue) {
+                signal.getProcessTo().processSignal(signal.getProcessFrom(), signal.getMessage(), signal.getParams())
+            }
         }
     }
 
