@@ -11,7 +11,7 @@ import stone.ton.tapreader.classes.utils.General.Companion.toHex
 import stone.ton.tapreader.classes.pos.interfaces.ICardConnection
 import stone.ton.tapreader.classes.pos.interfaces.IProcess
 
-class ProcessSelection(private val kernels: List<KernelData>) : IProcess {
+class ProcessSelection(private val kernels: List<KernelData>) {
     //TODO improve dataset for each transaction type
 
     private val parser = BerTlvParser()

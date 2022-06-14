@@ -8,11 +8,15 @@ import android.nfc.tech.IsoDep
 import android.os.Build
 import android.os.Bundle
 import android.text.method.ScrollingMovementMethod
+import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import stone.ton.tapreader.classes.pos.Pos
 import stone.ton.tapreader.classes.pos.interfaces.ICardPoller
 import stone.ton.tapreader.classes.pos.interfaces.IUIProcessor
@@ -23,6 +27,7 @@ class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
     private lateinit var apduTrace: TextView
     private lateinit var clearTraceBtn: Button
 
+    @OptIn(DelicateCoroutinesApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val amount = intent.getStringExtra("amount")
@@ -32,7 +37,9 @@ class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
         apduTrace = findViewById<TextView>(R.id.apduTrace)
         clearTraceBtn = findViewById(R.id.clear_text)
         clearTraceBtn.setOnClickListener { clearTrace() }
-        pos.reader.startByProcess(Integer.parseInt(amount!!,10), paymentType)
+        GlobalScope.launch {
+            pos.reader.startByProcess(Integer.parseInt(amount!!,10), paymentType)
+        }
         apduTrace.movementMethod = ScrollingMovementMethod()
     }
 
@@ -69,6 +76,8 @@ class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
 
     @RequiresApi(Build.VERSION_CODES.M)
     override fun startCardPolling(readerCallback: NfcAdapter.ReaderCallback) {
+
+        Log.i("ReadActivity", "StartCardPolling")
         val intent = Intent(this, javaClass).apply {
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
@@ -98,6 +107,8 @@ class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
             nfcAdapter.disableForegroundDispatch(this)
             nfcAdapter.disableReaderMode(this)
         }
+
+        this.onResumeCallback!!.invoke()
     }
 
     override fun processUird(userInterfaceRequestData: UserInterfaceRequestData) {

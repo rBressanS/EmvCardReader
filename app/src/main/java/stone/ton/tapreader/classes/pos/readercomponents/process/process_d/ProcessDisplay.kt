@@ -4,7 +4,7 @@ import stone.ton.tapreader.classes.pos.interfaces.IUIProcessor
 import stone.ton.tapreader.classes.pos.interfaces.IProcess
 import kotlin.math.pow
 
-class ProcessDisplay(var uirdProcessor: IUIProcessor) : IProcess {
+class ProcessDisplay(var uirdProcessor: IUIProcessor) {
 
     //TODO implement dataset for each language
 

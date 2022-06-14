@@ -1,27 +1,32 @@
 package stone.ton.tapreader.classes.pos.readercomponents.process
 
+import android.util.Log
 import stone.ton.tapreader.classes.pos.readercomponents.process.process_d.ProcessDisplay
 import stone.ton.tapreader.classes.pos.readercomponents.process.process_d.UserInterfaceRequestData
 import stone.ton.tapreader.classes.pos.interfaces.ICardConnection
 import stone.ton.tapreader.classes.pos.interfaces.IProcess
+import stone.ton.tapreader.classes.pos.readercomponents.process.coprocess.CoProcessPCD
 
 class ProcessMain(
     val processP: ProcessPCD,
     val processD: ProcessDisplay,
     val processS: ProcessSelection
-) : IProcess {
+) {
     //TODO implement dataset
 
     //TODO Stopped at EMV Kernel C8 - 2.2.5
     // 4 Step
     var amount = 0
     var paymentType = ""
-    var languagePreference = UserInterfaceRequestData.Companion.LanguagePreference.PT_BR
+    private val languagePreference = UserInterfaceRequestData.Companion.LanguagePreference.PT_BR
 
-    fun startTransaction(amount: Int, paymentType: String) {
+    suspend fun startTransaction(amount: Int, paymentType: String) {
+        Log.i("ProcessMain", "startTransaction")
         this.amount = amount
         this.paymentType = paymentType
-        processP.startPolling(this::receiveCardDetected)
+        //processP.startPolling(this::receiveCardDetected)
+        CoProcessPCD.cardConnectionCallback = this::receiveCardDetected
+        CoProcessPCD.addToQueue("StartPolling");
         processD.processUserInterfaceRequestData(
             UserInterfaceRequestData(
                 UserInterfaceRequestData.Companion.MessageIdentifier.PRESENT_CARD,

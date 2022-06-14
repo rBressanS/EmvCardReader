@@ -11,7 +11,7 @@ import stone.ton.tapreader.classes.pos.interfaces.IProcess
 import java.io.IOException
 import java.util.logging.Logger
 
-class ProcessPCD(var ICardPoller: ICardPoller) : IProcess {
+class ProcessPCD(var ICardPoller: ICardPoller) {
 
     val logger = Logger.getLogger(this.javaClass.name)
 
