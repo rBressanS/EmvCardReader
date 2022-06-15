@@ -4,7 +4,7 @@ interface IProcessSignal {
 
     fun getMessage():String
 
-    fun getParams():Any
+    fun getParams():Any?
 
     fun getProcessTo(): IProcess
 

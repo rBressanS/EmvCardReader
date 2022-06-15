@@ -1,5 +1,8 @@
 package stone.ton.tapreader.classes.apdu
 
+import com.payneteasy.tlv.BerTlv
+import com.payneteasy.tlv.BerTlvParser
+
 class APDUResponse(fullData: ByteArray) {
     var sw1: Byte = 0
     var sw2: Byte = 0
@@ -16,5 +19,13 @@ class APDUResponse(fullData: ByteArray) {
 
     fun wasSuccessful(): Boolean {
         return sw1 == 0x90.toByte() && sw2 == 0.toByte()
+    }
+
+    fun getParsedData(): BerTlv {
+        return parser.parseConstructed(data)
+    }
+
+    companion object{
+        private val parser = BerTlvParser()
     }
 }

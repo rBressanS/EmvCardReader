@@ -27,7 +27,7 @@ class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
     private lateinit var apduTrace: TextView
     private lateinit var clearTraceBtn: Button
 
-    @OptIn(DelicateCoroutinesApi::class)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val amount = intent.getStringExtra("amount")
@@ -37,9 +37,7 @@ class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
         apduTrace = findViewById<TextView>(R.id.apduTrace)
         clearTraceBtn = findViewById(R.id.clear_text)
         clearTraceBtn.setOnClickListener { clearTrace() }
-        GlobalScope.launch {
-            pos.reader.startByProcess(Integer.parseInt(amount!!,10), paymentType)
-        }
+        pos.reader.startByProcess(Integer.parseInt(amount!!,10), paymentType)
         apduTrace.movementMethod = ScrollingMovementMethod()
     }
 
