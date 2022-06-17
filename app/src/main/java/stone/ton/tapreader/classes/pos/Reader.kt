@@ -23,11 +23,6 @@ class Reader(
     var uiProcessor: IUIProcessor
 ) {
 
-    var processD = ProcessDisplay(uiProcessor)
-    var processS = ProcessSelection(kernels)
-    var processM = ProcessMain(processD, processS)
-
-
     fun startByProcess(amount: Int?, paymentType: String?){
         CoProcessPCD.cardPoller = cardPoller
         CoProcessDisplay.uiProcessor = uiProcessor

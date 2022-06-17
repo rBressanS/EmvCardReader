@@ -5,26 +5,26 @@ import com.payneteasy.tlv.BerTag
 import stone.ton.tapreader.classes.apdu.APDUCommand
 import stone.ton.tapreader.classes.apdu.APDUResponse
 import stone.ton.tapreader.classes.emv.CandidateApp
-import stone.ton.tapreader.classes.pos.interfaces.ICardConnection
 import stone.ton.tapreader.classes.pos.interfaces.IProcess
-import stone.ton.tapreader.classes.pos.readercomponents.process.ProcessSelection
-import stone.ton.tapreader.classes.pos.readercomponents.process.ProcessSignalQueue
-import stone.ton.tapreader.classes.pos.readercomponents.process.process_d.UserInterfaceRequestData
+import stone.ton.tapreader.classes.pos.interfaces.IProcessSignal
 import stone.ton.tapreader.classes.utils.General.Companion.toHex
+import stone.ton.tapreader.classes.utils.ProcessSelectionResponse
 
 object CoProcessSelection: IProcess {
 
-    fun getSelectionData(): ProcessSelection.Companion.ProcessSelectionResponse? {
-        val getPPSEApdu =
-            APDUCommand.getForSelectApplication("32 50 41 59 2E 53 59 53 2E 44 44 46 30 31")
-        val ppseResponse = cardConnection.transceive(getPPSEApdu)
-        val cardCandidateList = parsePPSEResponse(ppseResponse)
-        val selectableApp =
-            pickApplicationFromCandidateList(terminalCandidateList, cardCandidateList)
+    fun getPPSE(): ProcessSelectionResponse?{
+        val ppseResponse =CoProcessPCD.communicateWithCard(APDUCommand.getForSelectApplication("32 50 41 59 2E 53 59 53 2E 44 44 46 30 31"))
+
+        val candidateList = parsePPSEResponse(ppseResponse)
+
+        val terminalList = HashMap<String, Int>()
+        terminalList["A0000000041010"] = 2
+        terminalList["A0000000043060"] = 2
+        val selectableApp = pickApplicationFromCandidateList(terminalList, candidateList)
         return if (selectableApp != null) {
             val getAppData = APDUCommand.getForSelectApplication(selectableApp.aid)
-            val appResponse = cardConnection.transceive(getAppData)
-            ProcessSelection.Companion.ProcessSelectionResponse(
+            val appResponse = CoProcessPCD.communicateWithCard(getAppData)
+            ProcessSelectionResponse(
                 selectableApp.kernelId,
                 selectableApp.aid.toHex(),
                 appResponse
@@ -32,12 +32,25 @@ object CoProcessSelection: IProcess {
         } else {
             null
         }
+
     }
 
-    private fun getPPSE(){
-        val getPPSEApdu =
-            APDUCommand.getForSelectApplication("32 50 41 59 2E 53 59 53 2E 44 44 46 30 31")
-            ProcessSignalQueue.addToQueue(CoProcessPCD.buildSignalForCommandApdu(this, getPPSEApdu))
+    private fun pickApplicationFromCandidateList(
+        terminalList: Map<String, Int>,
+        cardList: List<CandidateApp>,
+    ): CandidateApp? {
+        var chosenApp: CandidateApp? = null
+        for (cardApp in cardList) {
+            val searchAid = cardApp.aid.toHex().replace(" ", "")
+            val kernelId = terminalList[searchAid]
+            if (kernelId != null) {
+                if (chosenApp == null || cardApp.priority[0] < chosenApp.priority[0]) {
+                    chosenApp = cardApp
+                    chosenApp.kernelId = kernelId
+                }
+            }
+        }
+        return chosenApp
     }
 
     private fun parsePPSEResponse(receive: APDUResponse): List<CandidateApp> {
@@ -63,6 +76,10 @@ object CoProcessSelection: IProcess {
         if(signal == "ACT"){
             getPPSE()
         }
+    }
+
+    fun buildSignalForAppSelection(processFrom: IProcess): IProcessSignal {
+        return signalBuilder("ACT", processFrom, null)
     }
 
 }

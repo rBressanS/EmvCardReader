@@ -8,22 +8,27 @@ import stone.ton.tapreader.classes.dataclasses.kernel.KernelData
 import stone.ton.tapreader.classes.pos.interfaces.ICardPoller
 import stone.ton.tapreader.classes.pos.interfaces.IUIProcessor
 import stone.ton.tapreader.classes.utils.AssetsParser
+import stone.ton.tapreader.classes.utils.DataSets
 
 class Pos(readActivity: ReadActivity, cardPoller: ICardPoller, uiProcessor:IUIProcessor) {
     val terminalTags = getTerminalTags(readActivity)
     val caPublicKeys = getCaPublicKeys(readActivity)
     val kernels = getKernels(readActivity)
 
+
     private fun getTerminalTags(context: Context): List<TerminalTag> {
-        return AssetsParser.parseAsset(context, "terminal_config/terminal_tags")
+        DataSets.terminalTags = AssetsParser.parseAsset(context, "terminal_config/terminal_tags")
+        return DataSets.terminalTags
     }
 
     private fun getCaPublicKeys(context: Context): List<CaPublicKey> {
-        return AssetsParser.parseAsset(context, "terminal_config/ca_public_keys")
+        DataSets.caPublicKeys = AssetsParser.parseAsset(context, "terminal_config/ca_public_keys")
+        return DataSets.caPublicKeys
     }
 
     private fun getKernels(context: Context): List<KernelData> {
-        return AssetsParser.parseAsset(context, "terminal_config/kernels")
+        DataSets.kernels = AssetsParser.parseAsset(context, "terminal_config/kernels")
+        return DataSets.kernels
     }
 
     val reader: Reader = Reader(readActivity, kernels, terminalTags, cardPoller, uiProcessor)

@@ -79,21 +79,21 @@ class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
         val intent = Intent(this, javaClass).apply {
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
-        val nfcintent =
+        /*val nfcintent =
             PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
 
-        val intentFiltersArray = arrayOf(IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED))
+        val intentFiltersArray = arrayOf(IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED))*/
 
         val nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         val extra = Bundle()
         extra.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 1000)
         this.onResumeCallback = {
-            nfcAdapter.enableForegroundDispatch(
+            /*nfcAdapter.enableForegroundDispatch(
                 this,
                 nfcintent,
                 intentFiltersArray,
                 arrayOf(arrayOf<String>(IsoDep::class.java.name))
-            )
+            )*/
             nfcAdapter.enableReaderMode(
                 this,
                 readerCallback,
@@ -102,7 +102,7 @@ class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
             )
         }
         this.onPauseCallback = {
-            nfcAdapter.disableForegroundDispatch(this)
+            //nfcAdapter.disableForegroundDispatch(this)
             nfcAdapter.disableReaderMode(this)
         }
 

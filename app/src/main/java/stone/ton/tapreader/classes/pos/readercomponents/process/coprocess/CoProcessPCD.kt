@@ -4,6 +4,7 @@ import android.nfc.NfcAdapter
 import android.nfc.tech.IsoDep
 import com.payneteasy.tlv.BerTlvParser
 import stone.ton.tapreader.classes.apdu.APDUCommand
+import stone.ton.tapreader.classes.apdu.APDUResponse
 import stone.ton.tapreader.classes.pos.interfaces.*
 import stone.ton.tapreader.classes.pos.readercomponents.process.ProcessSignalQueue
 import stone.ton.tapreader.classes.utils.CardConnection
@@ -20,7 +21,7 @@ object CoProcessPCD: IProcess {
 
     lateinit var cardConnection: ICardConnection
 
-    private fun startPolling(cardPoller: ICardPoller) {
+    fun startPolling(cardPoller: ICardPoller) {
         logger.info("startPolling")
         cardPoller.startCardPolling(NfcAdapter.ReaderCallback {
             cardConnection = CardConnection(IsoDep.get(it))
@@ -47,10 +48,14 @@ object CoProcessPCD: IProcess {
         }
         if(signal == "ACT"){
             if(params is APDUCommand){
-                var response = cardConnection.transceive(params)
-
+                val response = cardConnection.transceive(params)
+                ProcessSignalQueue.addToQueue(ProcessSignal("OUT", response, processFrom, this))
             }
         }
+    }
+
+    fun communicateWithCard(params:APDUCommand):APDUResponse{
+        return cardConnection.transceive(params)
     }
 
     fun buildSignalForPolling(processFrom: IProcess, cardPoller: ICardPoller): IProcessSignal{

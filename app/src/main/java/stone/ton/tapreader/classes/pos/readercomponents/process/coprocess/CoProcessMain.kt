@@ -5,6 +5,7 @@ import stone.ton.tapreader.classes.pos.interfaces.*
 import stone.ton.tapreader.classes.pos.readercomponents.process.process_d.UserInterfaceRequestData
 import stone.ton.tapreader.classes.pos.readercomponents.process.ProcessSignalQueue
 import stone.ton.tapreader.classes.pos.readercomponents.process.coprocess.CoProcessPCD.cardPoller
+import stone.ton.tapreader.classes.utils.DataSets
 
 object CoProcessMain:IProcess {
     //TODO implement dataset
@@ -34,42 +35,22 @@ object CoProcessMain:IProcess {
         )))
     }
 
-    /*
-    private fun receiveCardDetected(cardConnection: ICardConnection) {
-        val processSelectionResponse =
-            processS.getSelectionData(cardConnection, amount, paymentType)
-        if(processSelectionResponse == null){
-            processD.processUserInterfaceRequestData(
-                UserInterfaceRequestData(
-                    UserInterfaceRequestData.Companion.MessageIdentifier.USE_ANOTHER_CARD,
-                    UserInterfaceRequestData.Companion.Status.READY_TO_READ,
-                    0,
-                    languagePreference,
-                    UserInterfaceRequestData.Companion.ValueQualifier.AMOUNT,
-                    amount,
-                    76
-                )
-            )
-        }
-        this.initializeKernel()
-    }
-     */
-
     fun initializeKernel() {}
 
     override fun processSignal(processFrom: IProcess, signal: String, params: Any?) {
         if(signal == "CardDetected"){
-            /*val processSelectionResponse =
-                processS.getSelectionData(amount, paymentType)*/
-            ProcessSignalQueue.addToQueue(CoProcessDisplay.buildSignalForMsg(this, UserInterfaceRequestData(
-                UserInterfaceRequestData.Companion.MessageIdentifier.USE_ANOTHER_CARD,
-                UserInterfaceRequestData.Companion.Status.CARD_READ_SUCCESSFULLY,
-                0,
-                languagePreference,
-                UserInterfaceRequestData.Companion.ValueQualifier.AMOUNT,
-                amount,
-                76
-            )))
+
+            val response = CoProcessSelection.getPPSE()
+            if (response != null) {
+                if(response.kenerlId == 2){
+                    val kernelData = DataSets.kernels.find { kernelData -> kernelData.kernelId == 2 }
+                    if (kernelData != null) {
+                        CoProcessKernelC2.kernelData = kernelData
+                        CoProcessKernelC2.start(response.fciResponse)
+                    }
+                }
+            }
+
         }
     }
 
