@@ -21,6 +21,8 @@ object CoProcessSelection : IProcess {
         val terminalList = HashMap<String, Int>()
         terminalList["A0000000041010"] = 2
         terminalList["A0000000043060"] = 2
+        terminalList["A0000000041010D07613"] = 2
+        terminalList["A0000000041010D07612"] = 2
         val selectableApp = pickApplicationFromCandidateList(terminalList, candidateList)
         return if (selectableApp != null) {
             val getAppData = APDUCommand.buildSelectApplication(selectableApp.aid)

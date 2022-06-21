@@ -62,6 +62,16 @@ class APDUCommand(
                 parameter2 = sfi,
             )
         }
+
+        fun buildExchangeRelayResistanceData(entropyData:ByteArray): APDUCommand {
+            return APDUCommand(
+                class_ = 0x80.toByte(),
+                instruction = 0xEA.toByte(),
+                parameter1 = 0x00,
+                parameter2 = 0x00,
+                data = entropyData
+            )
+        }
     }
 
 }

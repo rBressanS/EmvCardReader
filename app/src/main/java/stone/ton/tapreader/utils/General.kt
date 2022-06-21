@@ -1,6 +1,8 @@
 package stone.ton.tapreader.utils
 
 import com.payneteasy.tlv.BerTlv
+import kotlin.experimental.and
+import kotlin.experimental.or
 
 class General {
 
@@ -17,6 +19,25 @@ class General {
                 }
             }
             return result
+        }
+
+        fun ByteArray.startsWith(str:String):Boolean{
+            val values = str.decodeHex()
+            for ((index, va) in values.withIndex()){
+                if(va != this[index]){
+                    return false
+                }
+            }
+            return true
+        }
+
+
+        fun ByteArray.setBitOfByte(bit:Int, byte:Int, value:Boolean = true){
+            if(value){
+                this[byte] = this[byte] or ((1 shl bit).toByte())
+            }else{
+                this[byte] = this[byte] and (1 shl bit).inv().toByte()
+            }
         }
 
         fun ByteArray.toHex(): String {

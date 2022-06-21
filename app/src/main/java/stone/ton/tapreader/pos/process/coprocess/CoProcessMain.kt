@@ -65,7 +65,9 @@ object CoProcessMain : IProcess {
                             syncDataList.add(BerTlvBuilder().addHex(BerTag(kernelTag.tag.decodeHex()),kernelTag.value).buildTlv())
                         }
                         val startProcessPayload = CoProcessKernelC2.StartProcessPayload(response.fciResponse, syncDataList)
-                        kernel2.start(startProcessPayload)
+                        val result = kernel2.start(startProcessPayload)
+                        println(result)
+
                         //CoProcessKernelC2.kernelData = kernelData
                         //CoProcessKernelC2.start(response.fciResponse)
                     }
