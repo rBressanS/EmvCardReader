@@ -15,10 +15,13 @@ import stone.ton.tapreader.utils.BerTlvExtension.Companion.getFullAsByteArray
 import stone.ton.tapreader.utils.BerTlvExtension.Companion.getListAsByteArray
 import stone.ton.tapreader.utils.BerTlvExtension.Companion.getValueAsByteArray
 import stone.ton.tapreader.utils.General.Companion.decodeHex
+import stone.ton.tapreader.utils.General.Companion.getIntValue
 import stone.ton.tapreader.utils.General.Companion.setBitOfByte
 import stone.ton.tapreader.utils.General.Companion.toHex
 import java.io.IOException
 import kotlin.experimental.and
+import kotlin.math.max
+import kotlin.math.min
 
 class CoProcessKernelC2 {
 
@@ -41,7 +44,7 @@ class CoProcessKernelC2 {
     var cvmResult = 0
     var acType = "TC"
     var TVR = 0
-    var odaStatus = 0
+    var odaStatus = ""
     var rrpCounter = 0
     var terminalCapabilities = TerminalCapabilities()
     var discretionaryData = DiscretionaryData(ArrayList())
@@ -72,8 +75,8 @@ class CoProcessKernelC2 {
         val languagePreference = kernelDatabase.getTlv(byteArrayOf(0x5F, 0x2D))
         if (languagePreference != null) {
             val lngPref = languagePreference.fullTag.bytesValue
-            for((index, lng) in lngPref.withIndex()){
-                userInterfaceRequestData[5+index] = lng
+            for ((index, lng) in lngPref.withIndex()) {
+                userInterfaceRequestData[5 + index] = lng
             }
 
         }
@@ -85,30 +88,32 @@ class CoProcessKernelC2 {
     }
 
     fun initializeDiscretionaryData() {
-        for(tag in discretionaryDataElements){
+        for (tag in discretionaryDataElements) {
             kernelDatabase.runIfExists(tag.decodeHex()) {
                 discretionaryData.add(it.fullTag)
             }
         }
     }
 
-    private fun buildOutSignal(): OutSignal{
-        kernelDatabase.add(BerTlvBuilder().addBytes(BerTag("DF8115".decodeHex()),errorIndication).buildTlv())
+    private fun buildOutSignal(): OutSignal {
+        kernelDatabase.add(
+            BerTlvBuilder().addBytes(BerTag("DF8115".decodeHex()), errorIndication).buildTlv()
+        )
         initializeDiscretionaryData()
-        return OutSignal(outcomeParameter, null, DataRecord(),discretionaryData)
+        return OutSignal(outcomeParameter, null, DataRecord(), discretionaryData)
     }
 
-    private fun addTagToDatabase(tag:String, value:String){
+    private fun addTagToDatabase(tag: String, value: String) {
         kernelDatabase.add(
             BerTlvBuilder().addHex(BerTag(tag.decodeHex()), value).buildTlv()
         )
     }
 
-    private fun isBitSet(n: Byte, k: Byte) :Boolean{
+    private fun isBitSet(n: Byte, k: Byte): Boolean {
         return (n and ((1 shl k - 1).toByte())) != 0.toByte()
     }
 
-    private fun processErrorInGpo():OutSignal{
+    private fun processErrorInGpo(): OutSignal {
         userInterfaceRequestData[0] = 0x1c
         userInterfaceRequestData[1] = 0x00
         outcomeParameter.status = 0x04
@@ -117,15 +122,15 @@ class CoProcessKernelC2 {
         return buildOutSignal()
     }
 
-    private fun getCtlessTrxLimit(aip:BerTlv): Int{
-        return if(isBitSet(aip.bytesValue[0], 2)){
+    private fun getCtlessTrxLimit(aip: BerTlv): Int {
+        return if (isBitSet(aip.bytesValue[0], 2)) {
             kernelDatabase.getTlv("DF8125".decodeHex())!!.fullTag.intValue
-        }else{
+        } else {
             kernelDatabase.getTlv("DF8124".decodeHex())!!.fullTag.intValue
         }
     }
 
-    private fun processFciResponse(fciResponse: APDUResponse): OutSignal?{
+    private fun processFciResponse(fciResponse: APDUResponse): OutSignal? {
         val fullPdol = buildDolValue(
             fciResponse.getParsedData().find(BerTag(0xA5))
                 .find(BerTag(0x9F, 0x38))
@@ -134,7 +139,7 @@ class CoProcessKernelC2 {
             APDUCommand.buildGetProcessingOptions(fullPdol)
         try {
             val gpoResponse = communicateWithCard(gpoRequest)
-            if(!gpoResponse.wasSuccessful()){
+            if (!gpoResponse.wasSuccessful()) {
                 errorIndication[1] = 0x03
                 errorIndication[3] = gpoResponse.sw1
                 errorIndication[4] = gpoResponse.sw2
@@ -144,41 +149,42 @@ class CoProcessKernelC2 {
                 return buildOutSignal()
             }
             val responseTemplate = gpoResponse.getParsedData()
-            if(responseTemplate.tag == BerTag(0x77)){
+            if (responseTemplate.tag == BerTag(0x77)) {
                 kernelDatabase.parseAndStoreCardResponse(gpoResponse.getParsedData())
-            }else{
-                if(responseTemplate.tag == BerTag(0x80)){
-                    val aip = responseTemplate.bytesValue.copyOfRange(0,1)
-                    addTagToDatabase("82",aip.toHex())
+            } else {
+                if (responseTemplate.tag == BerTag(0x80)) {
+                    val aip = responseTemplate.bytesValue.copyOfRange(0, 1)
+                    addTagToDatabase("82", aip.toHex())
 
-                    val afl = responseTemplate.bytesValue.copyOfRange(2, responseTemplate.bytesValue.size)
-                    addTagToDatabase("94",afl.toHex())
-                }else{
+                    val afl =
+                        responseTemplate.bytesValue.copyOfRange(2, responseTemplate.bytesValue.size)
+                    addTagToDatabase("94", afl.toHex())
+                } else {
                     errorIndication[1] = 0x04
                     return processErrorInGpo()
                 }
-                if(!kernelDatabase.isPresent("94".decodeHex()) || !kernelDatabase.isPresent("82".decodeHex())){
+                if (!kernelDatabase.isPresent("94".decodeHex()) || !kernelDatabase.isPresent("82".decodeHex())) {
                     errorIndication[1] = 0x01
                     return processErrorInGpo()
                 }
 
             }
-        }catch (e: IOException){
+        } catch (e: IOException) {
             outcomeParameter.status = 0x07
             outcomeParameter.start = 0x01
-            errorIndication[0]=0x02
+            errorIndication[0] = 0x02
             return buildOutSignal()
         }
         return null
     }
 
-    private fun processRRP(entropy:ByteArray): OutSignal?{
+    var rrpFailedAfterAttempts = false
+
+    private fun processRRP(entropy: ByteArray): OutSignal? {
         try {
             val exchangeRRD = buildExchangeRelayResistanceData(entropy)
-            val begin = System.nanoTime()
             val rrdResponse = communicateWithCard(exchangeRRD)
-            val end = System.nanoTime()
-            if(!rrdResponse.wasSuccessful()){
+            if (!rrdResponse.wasSuccessful()) {
                 userInterfaceRequestData[0] = 0b00011100
                 userInterfaceRequestData[1] = 0
                 outcomeParameter.status = 0x04
@@ -188,7 +194,106 @@ class CoProcessKernelC2 {
                 errorIndication[4] = rrdResponse.sw2
                 return buildOutSignal()
             }
-        }catch (e: IOException){
+            val rrpResponse = rrdResponse.getParsedData()
+            if (rrpResponse.tag == BerTag(0x80) && rrpResponse.bytesValue.size == 10) {
+                val deviceRelayResistanceEntropy = rrpResponse.bytesValue.copyOfRange(0, 4)
+                val minTimeForProcessingRelayResistanceApdu =
+                    rrpResponse.bytesValue.copyOfRange(4, 6)
+                val maxTimeForProcessingRelayResistanceApdu =
+                    rrpResponse.bytesValue.copyOfRange(6, 8)
+                val deviceEstimatedTransmissionTimeForRR = rrpResponse.bytesValue.copyOfRange(8, 10)
+                addTagToDatabase("DF8302", deviceRelayResistanceEntropy.toHex())
+                addTagToDatabase("DF8303", minTimeForProcessingRelayResistanceApdu.toHex())
+                addTagToDatabase("DF8304", maxTimeForProcessingRelayResistanceApdu.toHex())
+                addTagToDatabase("DF8305", deviceEstimatedTransmissionTimeForRR.toHex())
+                val minTimeForProcessingAsInt = minTimeForProcessingRelayResistanceApdu.getIntValue()
+                val maxTimeForProcessingAsInt = maxTimeForProcessingRelayResistanceApdu.getIntValue()
+                val timeTakenInNano = rrdResponse.timeTakenInNanoSeconds
+                val timeTakenInMicro = timeTakenInNano / 1000
+                val timeTakenInHundredsOfMicro = timeTakenInMicro / 100
+                println("timeTakenInHundredsOfMicro: $timeTakenInHundredsOfMicro")
+                val expectedTransmissionForCommand =
+                    kernelDatabase.getTlv("DF8134".decodeHex())!!.fullTag.intValue
+                val expectedTransmissionForResponse =
+                    kernelDatabase.getTlv("DF8135".decodeHex())!!.fullTag.intValue
+                val deviceEstimatedAsInt = deviceEstimatedTransmissionTimeForRR.getIntValue()
+                val measuredRelayResistanceProcessingTime = max(
+                    0,
+                    timeTakenInHundredsOfMicro - expectedTransmissionForCommand -
+                            min(
+                                deviceEstimatedAsInt,
+                                expectedTransmissionForResponse
+                            )
+                )
+                val minRelayResistanceGracePeriod =  kernelDatabase.getTlv("DF8132".decodeHex())!!.fullTag.intValue
+                val maxRelayResistanceGracePeriod =  kernelDatabase.getTlv("DF8133".decodeHex())!!.fullTag.intValue
+                if(measuredRelayResistanceProcessingTime < max(0, (minTimeForProcessingAsInt - minRelayResistanceGracePeriod))){
+                    userInterfaceRequestData[0] = 0b00011100
+                    userInterfaceRequestData[1] = 0
+                    outcomeParameter.status = 0x04
+                    outcomeParameter.uiRequestOnOutcomePresent = true
+                    errorIndication[1] = 0x06
+                    errorIndication[5] = 0b00100001
+                    return buildOutSignal()
+                }else{
+                    val exceededMaximum = (measuredRelayResistanceProcessingTime > (maxTimeForProcessingAsInt + maxRelayResistanceGracePeriod))
+                    //TODO validate time taken
+                    if(rrpCounter < 2 && exceededMaximum){
+                        println("RRP RETRYING")
+                        println("ProcessingTime:$measuredRelayResistanceProcessingTime")
+                        println("Threshold: ${maxTimeForProcessingAsInt + maxRelayResistanceGracePeriod}")
+                        rrpCounter++
+                        generateUnpredictableNumber()
+                        val rrpEntropy = kernelDatabase.getTlv("9F37".decodeHex())!!.fullTag.bytesValue
+                        val outSignal = processRRP(rrpEntropy)
+                        return if(outSignal != null){
+                            outSignal
+                        }else{
+                            if(rrpFailedAfterAttempts){
+                                return null
+                            }
+                            tvr.setBitOfByte(1,4, false)
+                            tvr.setBitOfByte(2,4, true)
+                            println("RRP OK")
+                            null
+                        }
+                    }
+                    if(exceededMaximum){
+                        tvr.setBitOfByte(3,4)
+                        println("maximum exceeded")
+                    }
+                    val rrAccuracyThreshold = kernelDatabase.getTlv("DF8136".decodeHex())!!.fullTag.intValue
+                    val rrMismatchThreshold = kernelDatabase.getTlv("DF8137".decodeHex())!!.fullTag.intValue
+                    if(deviceEstimatedAsInt != 0 && expectedTransmissionForResponse != 0
+                        && !(   ((deviceEstimatedAsInt * 100 / expectedTransmissionForResponse) < rrMismatchThreshold) ||
+                                ((expectedTransmissionForResponse * 100 / deviceEstimatedAsInt) < rrMismatchThreshold) ||
+                                (max(0, measuredRelayResistanceProcessingTime - minTimeForProcessingAsInt)>rrAccuracyThreshold)
+                                )
+                    )
+                        {
+                        //32
+                        tvr.setBitOfByte(1,4, false)
+                        tvr.setBitOfByte(2,4, true)
+                            println("RRP OK")
+                    }else{
+                        //31
+                        tvr.setBitOfByte(4,4)
+                        println("RRP NOK AFTER ALL TRIES")
+                        rrpFailedAfterAttempts = true
+                        return null
+                    }
+
+                }
+            } else {
+                userInterfaceRequestData[0] = 0b00011100
+                userInterfaceRequestData[1] = 0
+                outcomeParameter.status = 0x04
+                outcomeParameter.uiRequestOnOutcomePresent = true
+                errorIndication[1] = 0x04
+                errorIndication[5] = 0b00100001
+                return buildOutSignal()
+            }
+        } catch (e: IOException) {
             userInterfaceRequestData[0] = 0b00100001
             userInterfaceRequestData[1] = 0b00000010
             userInterfaceRequestData[2] = 0
@@ -196,11 +301,15 @@ class CoProcessKernelC2 {
             userInterfaceRequestData[4] = 0
             outcomeParameter.status = 0x04
             outcomeParameter.start = 0x01
-            errorIndication[0]=0x02
-            errorIndication[5]= 0b00100001
+            errorIndication[0] = 0x02
+            errorIndication[5] = 0b00100001
             return buildOutSignal()
         }
         return null
+    }
+
+    fun generateUnpredictableNumber(){
+        addTagToDatabase("9F37", "00000000")
     }
 
     fun start(startProcessPayload: StartProcessPayload): OutSignal? {
@@ -227,16 +336,16 @@ class CoProcessKernelC2 {
         }
 
         //TODO implement algorithm to generate number
-        addTagToDatabase("9F37","00000000")
+        generateUnpredictableNumber()
 
         var outSignal = processFciResponse(startProcessPayload.fciResponse)
-        if(outSignal != null){
+        if (outSignal != null) {
             return outSignal
         }
 
         val aip = kernelDatabase.getTlv(byteArrayOf(0x82.toByte()))!!.fullTag
 
-        if(!isBitSet(aip.bytesValue[1],8)){
+        if (!isBitSet(aip.bytesValue[1], 8)) {
             errorIndication[1] = 0x07
             return processErrorInGpo()
         }
@@ -247,17 +356,23 @@ class CoProcessKernelC2 {
 
         println(aip.hexValue)
 
-        if (isBitSet(aip.bytesValue[1],1) ){
+        if (isBitSet(aip.bytesValue[1], 1)) {
             //Supports RRP
             val rrpEntropy = kernelDatabase.getTlv("9F37".decodeHex())!!.fullTag.bytesValue
             outSignal = processRRP(rrpEntropy)
-            if(outSignal != null){
+            if (outSignal != null) {
                 return outSignal
             }
-        }else{
+        } else {
             //Does not supports RRP
             tvr.setBitOfByte(1, 4)
             tvr.setBitOfByte(2, 4, false)
+        }
+
+        if(isBitSet(aip.bytesValue[0], 1) && isBitSet(terminalCapabilities.byte3.toByte(),4)){
+            odaStatus = "CDA"
+        }else{
+            tvr.setBitOfByte(8,0) // Offline data authentication was not performed
         }
 
         val aflEntries = activeAfl.toList().chunked(4)
@@ -289,7 +404,6 @@ class CoProcessKernelC2 {
         return (kernelDatabase.isPresent(byteArrayOf(0x8F.toByte())) // CA Public Key Index
                 && kernelDatabase.isPresent(byteArrayOf(0x90.toByte())) // Issuer Public Key Certificate
                 && kernelDatabase.isPresent(byteArrayOf(0x9F32.toByte())) // Issuer Public Key Exponent
-                //&& kernelDatabase.isPresent(byteArrayOf(0x92.toByte())) //
                 && kernelDatabase.isPresent(byteArrayOf(0x9F46.toByte())) // ICC Public Key Certificate
                 && kernelDatabase.isPresent(byteArrayOf(0x9F47.toByte())) // ICC Public Key Exponent
                 )
@@ -315,28 +429,25 @@ class CoProcessKernelC2 {
         return fullPdol
     }
 
-    class OutcomeParameter {
-        var status = 0
-        var start = 0
-        val onlineResponseData = 0
-        val CVM = 0
-        var uiRequestOnOutcomePresent = false
-        val uiRequestOnRestartPresent = false
-        val dataRecordPresent = false
-        val didescretionaryDataPresent = false
-        val receipt = false
-        val alternateInterfacePreference = 0
-        var fieldOffRequest = 0
-        val removalTimeount = 0
-
-    }
+    data class OutcomeParameter(var status: Int = 0,
+                                var start: Int = 0,
+                                val onlineResponseData: Int = 0,
+                                val CVM: Int = 0,
+                                var uiRequestOnOutcomePresent: Boolean = false,
+                                val uiRequestOnRestartPresent: Boolean = false,
+                                val dataRecordPresent: Boolean = false,
+                                val didescretionaryDataPresent: Boolean = false,
+                                val receipt: Boolean = false,
+                                val alternateInterfacePreference: Int = 0,
+                                var fieldOffRequest: Int = 0,
+                                val removalTimeount: Int = 0,)
 
     class DataRecord {
 
     }
 
-    class DiscretionaryData(var data:MutableList<BerTlv>) {
-        fun add(tag: BerTlv){
+    class DiscretionaryData(var data: MutableList<BerTlv>) {
+        fun add(tag: BerTlv) {
             data.add(tag)
         }
     }

@@ -3,6 +3,30 @@
     "kernelId": 2,
     "config": [
       {
+        "tag": "DF8132",
+        "value": "0014"
+      },
+      {
+        "tag": "DF8133",
+        "value": "0032"
+      },
+      {
+        "tag": "DF8134",
+        "value": "0012"
+      },
+      {
+        "tag": "DF8135",
+        "value": "0018"
+      },
+      {
+        "tag": "DF8136",
+        "value": "012C"
+      },
+      {
+        "tag": "DF8137",
+        "value": "32"
+      },
+      {
         "tag": "9F39",
         "value": "07"
       },

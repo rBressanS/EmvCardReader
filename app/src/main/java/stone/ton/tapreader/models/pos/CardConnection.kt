@@ -21,8 +21,10 @@ class CardConnection(val isoDep: IsoDep) : ICardConnection {
 
     override fun transceive(bytes: ByteArray): APDUResponse {
         logger.info("Send: " + bytes.toHex())
+        val begin = System.nanoTime()
         val response = isoDep.transceive(bytes)
+        val end = System.nanoTime()
         logger.info("Received: " + response.toHex())
-        return APDUResponse(response)
+        return APDUResponse(response, end-begin)
     }
 }

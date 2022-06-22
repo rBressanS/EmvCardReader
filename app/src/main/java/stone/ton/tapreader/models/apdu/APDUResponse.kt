@@ -3,7 +3,7 @@ package stone.ton.tapreader.models.apdu
 import com.payneteasy.tlv.BerTlv
 import com.payneteasy.tlv.BerTlvParser
 
-class APDUResponse(fullData: ByteArray) {
+class APDUResponse(fullData: ByteArray, val timeTakenInNanoSeconds: Long) {
     var sw1: Byte = 0
     var sw2: Byte = 0
     var data: ByteArray = ByteArray(0)

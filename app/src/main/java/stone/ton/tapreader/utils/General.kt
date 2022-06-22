@@ -31,6 +31,19 @@ class General {
             return true
         }
 
+        fun ByteArray.getIntValue(): Int {
+            var i = 0
+            var j = 0
+            var number = 0
+            i = 0
+            while (i < this.size) {
+                j = this[i].toInt()
+                number = number * 256 + if (j < 0) 256.let { j += it; j } else j
+                i++
+            }
+            return number
+        }
+
 
         fun ByteArray.setBitOfByte(bit:Int, byte:Int, value:Boolean = true){
             if(value){
