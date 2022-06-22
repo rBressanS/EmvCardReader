@@ -61,6 +61,7 @@ object CoProcessMain : IProcess {
                         kernel2.kernelData = kernelData
                         val syncDataList = ArrayList<BerTlv>()
                         syncDataList.add(BerTlvBuilder().addEmpty(BerTag("6F".decodeHex())).buildTlv())
+                        syncDataList.add(BerTlvBuilder().addAmount(BerTag("9F02".decodeHex()), this.amount.toBigDecimal()).buildTlv())
                         for(kernelTag in kernelData.kernelTags){
                             syncDataList.add(BerTlvBuilder().addHex(BerTag(kernelTag.tag.decodeHex()),kernelTag.value).buildTlv())
                         }

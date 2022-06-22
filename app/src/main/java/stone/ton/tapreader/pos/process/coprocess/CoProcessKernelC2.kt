@@ -11,9 +11,11 @@ import stone.ton.tapreader.models.emv.DOL
 import stone.ton.tapreader.models.kernel.KernelData
 import stone.ton.tapreader.models.kernel.TlvDatabase
 import stone.ton.tapreader.pos.process.process_d.UserInterfaceRequestData
+import stone.ton.tapreader.utils.BerTlvExtension.Companion.getBerLen
 import stone.ton.tapreader.utils.BerTlvExtension.Companion.getFullAsByteArray
 import stone.ton.tapreader.utils.BerTlvExtension.Companion.getListAsByteArray
 import stone.ton.tapreader.utils.BerTlvExtension.Companion.getValueAsByteArray
+import stone.ton.tapreader.utils.DataSets
 import stone.ton.tapreader.utils.General.Companion.decodeHex
 import stone.ton.tapreader.utils.General.Companion.getIntValue
 import stone.ton.tapreader.utils.General.Companion.setBitOfByte
@@ -49,6 +51,7 @@ class CoProcessKernelC2 {
     var terminalCapabilities = TerminalCapabilities()
     var discretionaryData = DiscretionaryData(ArrayList())
     var tvr = ByteArray(5)
+    var noCdaOptimisation = false
 
     val discretionaryDataElements = listOf<String>(
         "9F5D",
@@ -375,6 +378,8 @@ class CoProcessKernelC2 {
             tvr.setBitOfByte(8,0) // Offline data authentication was not performed
         }
 
+        var cdol: BerTlv? = null
+
         val aflEntries = activeAfl.toList().chunked(4)
         for (data in aflEntries) {
             val aflEntry = AFLEntry(data.toByteArray())
@@ -382,21 +387,141 @@ class CoProcessKernelC2 {
                 val sfiP2 = aflEntry.getSfiForP2()
                 val readRecord =
                     APDUCommand.buildReadRecord(sfiP2, record.toByte())
-                val readRecordResponse = communicateWithCard(readRecord)
-                kernelDatabase.parseAndStoreCardResponse(readRecordResponse.getParsedData())
-                if (aflEntry.isSigned) {
-                    signedData += readRecordResponse.getParsedData().getListAsByteArray().toHex()
+                val readRecordResponse: APDUResponse
+                try{
+                    readRecordResponse = communicateWithCard(readRecord)
+                } catch (e: IOException) {
+                    userInterfaceRequestData[0] = 0b00100001
+                    userInterfaceRequestData[1] = 0b00000010
+                    userInterfaceRequestData[2] = 0
+                    userInterfaceRequestData[3] = 0
+                    userInterfaceRequestData[4] = 0
+                    outcomeParameter.status = 0x04
+                    outcomeParameter.start = 0x01
+                    errorIndication[0] = 0x02
+                    errorIndication[5] = 0b00100001
+                    return buildOutSignal()
+                }
+                if(!readRecordResponse.wasSuccessful()){
+                    userInterfaceRequestData[0] = 0b00011100
+                    userInterfaceRequestData[1] = 0
+                    outcomeParameter.status = 0x04
+                    errorIndication[5] = 0b00011100
+                    errorIndication[1] = 0x03
+                    errorIndication[3] = readRecordResponse.sw1
+                    errorIndication[4] = readRecordResponse.sw2
+                    return buildOutSignal()
+                }
+
+                val readRecordResponseData = readRecordResponse.getParsedData()
+                if(aflEntry.sfi<= 10){
+                    if(readRecordResponseData.bytesValue.isNotEmpty() && readRecordResponseData.tag == BerTag(0x70)){
+                        kernelDatabase.parseAndStoreCardResponse(readRecordResponseData)
+                    }else{
+                        userInterfaceRequestData[0] = 0b00011100
+                        userInterfaceRequestData[1] = 0
+                        outcomeParameter.status = 0x04
+                        outcomeParameter.uiRequestOnOutcomePresent = true
+                        errorIndication[1] = 0x04
+                        errorIndication[5] = 0b00100001
+                        return buildOutSignal()
+                    }
+                }
+                cdol = kernelDatabase.getTlv("80".decodeHex())?.fullTag
+                if (aflEntry.isSigned && odaStatus == "CDA") {
+                    if(aflEntry.sfi <= 10){
+                        if(signedData.length < 2048*2){
+                            signedData += readRecordResponseData.getListAsByteArray().toHex()
+                        }else{
+                            tvr.setBitOfByte(3, 0) // CDA Failed
+                        }
+                    }else{
+                        if(readRecordResponseData.getListAsByteArray().isNotEmpty() && readRecordResponseData.tag == BerTag(0x70) && signedData.length < 2048*2){
+                            signedData += "70"+readRecordResponseData.getFullAsByteArray()
+                        }else{
+                            tvr.setBitOfByte(3, 0) // CDA Failed
+                        }
+                    }
+                }else{
+                    if(odaStatus == "CDA" || noCdaOptimisation){
+                        continue
+                    }else{
+                        if(kernelDatabase.isPresent("5F24".decodeHex()) && //Expiration Date
+                            kernelDatabase.isPresent("5A".decodeHex()) && // PAN
+                            kernelDatabase.isPresent("5F34".decodeHex()) && // SEQ NUMBER
+                            kernelDatabase.isPresent("9F07".decodeHex()) && // APP USAGE CONTROL
+                            kernelDatabase.isPresent("8E".decodeHex()) && // CVM LIST
+                            kernelDatabase.isPresent("9F0D".decodeHex()) && // IAC DEFAULT
+                            kernelDatabase.isPresent("9F0E".decodeHex()) && // IAC DENIAL
+                            kernelDatabase.isPresent("9F0F".decodeHex()) && // IAC ONLINE
+                            kernelDatabase.isPresent("5F28".decodeHex()) && // ISSUER COUNTRY CODE
+                            kernelDatabase.isPresent("57".decodeHex()) && // TRACK2 EQUIVALENT DATA
+                            kernelDatabase.isPresent("8C".decodeHex())){ // CDOL1
+                            break
+                        }
+                    }
                 }
             }
         }
-        if (hasMandatoryCdaTags()) {
-            if (kernelDatabase.isPresent(byteArrayOf(0x9F.toByte(), 0x4A))) {
-                val sdaTag = kernelDatabase.getTlv(BerTag(0x9F, 0x4A))
-                if (sdaTag != null && sdaTag.fullTag.intValue == 0x82) {
-                    signedData += sdaTag.fullTag.getFullAsByteArray().toHex()
-                }
-            }
+
+        val amountAuthorized = kernelDatabase.getTlv("9F02".decodeHex())?.fullTag?.intValue
+            ?: return buildOutSignal() // TODO corrigir page 253 456.13
+        if(amountAuthorized > readerContactlessTransactionLimit){
+            return  buildOutSignal() // TODO corrigir page 253 456.15
         }
+        if( !(kernelDatabase.isPresent("5F24".decodeHex()) && // ISSUER COUNTRY CODE
+            kernelDatabase.isPresent("5A".decodeHex()) && // TRACK2 EQUIVALENT DATA
+            kernelDatabase.isPresent("8C".decodeHex()))){
+            return buildOutSignal() // TODO corrigir page 254 456.17
+        }
+
+        if (!hasMandatoryCdaTags()) {
+            tvr.setBitOfByte(6,0) // ICC data missing
+            tvr.setBitOfByte(7,0) // CDA Failed
+        }
+        val caPkIndex = kernelDatabase.getTlv(BerTag(0x8F))!!.fullTag.hexValue!!
+        val rid = "A000000004"
+        val caPk =DataSets.caPublicKeys.find { it.index==caPkIndex && it.rId==rid }
+        if(caPk == null){
+            tvr.setBitOfByte(7,0) // CDA Failed
+        }
+        val sdaTag = kernelDatabase.getTlv(BerTag(0x9F, 0x4A))
+        if ( !(sdaTag != null && sdaTag.fullTag.intValue == 0x82)) {
+            return buildOutSignal() // TODO corrigir 257 456.27.1
+        }
+        if(signedData.length < 2048*2){
+            signedData += sdaTag.fullTag.getFullAsByteArray().toHex()
+        }else{
+            tvr.setBitOfByte(7,0) // CDA Failed
+        }
+        val readerCvmRequired = kernelDatabase.getTlv("DF8126".decodeHex())!!.fullTag.intValue
+        if(amountAuthorized > readerCvmRequired){
+            //31
+            outcomeParameter.receipt=true
+            terminalCapabilities.byte2 = kernelDatabase.getTlv("DF8118".decodeHex())!!.fullTag.intValue
+        }else{
+            //33
+            terminalCapabilities.byte2 = kernelDatabase.getTlv("DF8119".decodeHex())!!.fullTag.intValue
+        }
+
+        //TODO pre-generate AC balance reading
+
+        //TODO processing restrictions
+
+        //todo cvm selection
+
+        val readerContactlessFloorLimit = kernelDatabase.getTlv("DF8123".decodeHex())!!.fullTag.intValue
+        if(amountAuthorized > readerContactlessFloorLimit){
+            tvr.setBitOfByte(8,3) // trx exceeds floor limit
+        }
+
+        //TODO Terminal Action Analysis
+
+        //TODO Generate AC
+
+        //Start S12
+
+
         return null
     }
 
@@ -406,6 +531,7 @@ class CoProcessKernelC2 {
                 && kernelDatabase.isPresent(byteArrayOf(0x9F32.toByte())) // Issuer Public Key Exponent
                 && kernelDatabase.isPresent(byteArrayOf(0x9F46.toByte())) // ICC Public Key Certificate
                 && kernelDatabase.isPresent(byteArrayOf(0x9F47.toByte())) // ICC Public Key Exponent
+                && kernelDatabase.isPresent(byteArrayOf(0x9F4A.toByte())) // Static data authentication tag list
                 )
     }
 
@@ -437,7 +563,7 @@ class CoProcessKernelC2 {
                                 val uiRequestOnRestartPresent: Boolean = false,
                                 val dataRecordPresent: Boolean = false,
                                 val didescretionaryDataPresent: Boolean = false,
-                                val receipt: Boolean = false,
+                                var receipt: Boolean = false,
                                 val alternateInterfacePreference: Int = 0,
                                 var fieldOffRequest: Int = 0,
                                 val removalTimeount: Int = 0,)
