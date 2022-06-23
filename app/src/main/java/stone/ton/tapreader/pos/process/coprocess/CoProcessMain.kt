@@ -91,6 +91,20 @@ object CoProcessMain : IProcess {
                                 getDateOnFormat("hhmmss")
                             ).buildTlv()
                         )
+                        syncDataList.add(
+                            BerTlvBuilder().addHex(
+                                BerTag("9C".decodeHex()),
+                                "00"
+                            ).buildTlv()
+                        )
+                        for(terminalTag in DataSets.terminalTags){
+                            syncDataList.add(
+                                BerTlvBuilder().addHex(
+                                    BerTag(terminalTag.tag.decodeHex()),
+                                    terminalTag.value
+                                ).buildTlv()
+                            )
+                        }
                         for (kernelTag in kernelData.kernelTags) {
                             syncDataList.add(
                                 BerTlvBuilder().addHex(

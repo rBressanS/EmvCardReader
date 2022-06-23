@@ -1,13 +1,14 @@
 package stone.ton.tapreader.models.apdu
 
 import stone.ton.tapreader.utils.General.Companion.decodeHex
+import kotlin.experimental.or
 
 class APDUCommand(
     var class_: Byte,
     var instruction: Byte,
     var parameter1: Byte,
     var parameter2: Byte,
-    var data: ByteArray? = null,
+    val data: ByteArray? = null,
     private var le: Byte = 0x00
 ) {
 
@@ -19,9 +20,9 @@ class APDUCommand(
         bytes[2] = parameter1
         bytes[3] = parameter2
         if (data != null) {
-            if (data!!.isNotEmpty()) {
-                bytes += (data!!.size).toByte()
-                bytes += data!!
+            if (data.isNotEmpty()) {
+                bytes += (data.size).toByte()
+                bytes += data
             }
         }
 
@@ -70,6 +71,30 @@ class APDUCommand(
                 parameter1 = 0x00,
                 parameter2 = 0x00,
                 data = entropyData
+            )
+        }
+
+        fun buildGenerateAc(acType:String, isCda:Boolean, cdolData: ByteArray): APDUCommand {
+            var p1:Byte = 0x00
+            if(isCda){
+                p1 = p1.or(0b10000)
+            }
+            if(acType == "AAC"){
+                p1 = p1.or(0b0)
+            }
+            if(acType == "TC"){
+                p1 = p1.or(0b1000000)
+            }
+            if(acType == "ARQC"){
+                p1 = p1.or(0b10000000.toByte())
+            }
+
+            return APDUCommand(
+                class_ = 0x80.toByte(),
+                instruction = 0xAE.toByte(),
+                parameter1 = p1,
+                parameter2 = 0x00,
+                data = cdolData
             )
         }
     }

@@ -1,5 +1,6 @@
 package stone.ton.tapreader.utils
 
+import androidx.compose.runtime.rememberUpdatedState
 import com.payneteasy.tlv.BerTlv
 import kotlin.experimental.and
 import kotlin.experimental.or
@@ -54,6 +55,30 @@ class General {
 
         fun Byte.isBitSet(bit: Int): Boolean {
             return this.and((1 shl bit).toByte()) == (1 shl bit).toByte()
+        }
+
+        fun ByteArray.and(second:ByteArray):ByteArray{
+            if(this.size != second.size){
+                throw RuntimeException("Distinct sizes")
+            }else{
+                val returnable = ByteArray(this.size)
+                for((index, byte) in this.withIndex()){
+                    returnable[index] = byte.and(second[index])
+                }
+                return returnable
+            }
+        }
+
+        fun ByteArray.or(second:ByteArray):ByteArray{
+            if(this.size != second.size){
+                throw RuntimeException("Distinct sizes")
+            }else{
+                val returnable = ByteArray(this.size)
+                for((index, byte) in this.withIndex()){
+                    returnable[index] = byte.or(second[index])
+                }
+                return returnable
+            }
         }
 
         fun ByteArray.isBitSetOfByte(bit: Int, byte: Int): Boolean {

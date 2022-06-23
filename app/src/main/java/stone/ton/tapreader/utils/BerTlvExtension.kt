@@ -9,6 +9,14 @@ class BerTlvExtension {
             return this.hexValue.decodeHex()
         }
 
+        fun BerTlv.isEmpty():Boolean{
+            return if(isConstructed){
+                this.values.isEmpty()
+            }else{
+                this.bytesValue.isEmpty()
+            }
+        }
+
         fun BerTlv.getFullAsByteArray(): ByteArray {
             var returnable = ByteArray(0)
 
@@ -38,8 +46,7 @@ class BerTlvExtension {
                 this.getListAsByteArray().size
             }
 
-            val berLen: ByteArray
-            berLen = if (aLength < 0x80) {
+            val berLen: ByteArray = if (aLength < 0x80) {
                 byteArrayOf(aLength.toByte())
             } else if (aLength < 0x100) {
                 byteArrayOf(0x81.toByte(), aLength.toByte())

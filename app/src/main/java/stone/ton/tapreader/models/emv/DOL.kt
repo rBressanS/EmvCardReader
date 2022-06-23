@@ -8,7 +8,7 @@ class DOL(fullDol: ByteArray) {
 
     init {
         var remainingData = fullDol
-        requiredTags = HashMap()
+        requiredTags = LinkedHashMap()
         while (remainingData.isNotEmpty()) {
             var returnable = getTag(remainingData)
             remainingData = returnable["REMAINING"]!!
