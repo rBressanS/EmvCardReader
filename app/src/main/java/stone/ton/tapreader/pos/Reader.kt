@@ -22,9 +22,9 @@ class Reader(
         CoProcessPCD.cardPoller = cardPoller
         CoProcessDisplay.uiProcessor = uiProcessor
         ProcessSignalQueue.start()
-        try{
+        try {
             CoProcessMain.startTransaction(amount!!, paymentType!!)
-        }catch (e:Exception){
+        } catch (e: Exception) {
             e.printStackTrace()
         }
 

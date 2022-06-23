@@ -58,7 +58,7 @@ object CoProcessPCD : IProcess {
         }
     }
 
-    fun communicateWithCard(params: APDUCommand): APDUResponse{
+    fun communicateWithCard(params: APDUCommand): APDUResponse {
         return cardConnection.transceive(params)
     }
 

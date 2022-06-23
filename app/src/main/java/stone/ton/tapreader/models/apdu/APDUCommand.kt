@@ -63,7 +63,7 @@ class APDUCommand(
             )
         }
 
-        fun buildExchangeRelayResistanceData(entropyData:ByteArray): APDUCommand {
+        fun buildExchangeRelayResistanceData(entropyData: ByteArray): APDUCommand {
             return APDUCommand(
                 class_ = 0x80.toByte(),
                 instruction = 0xEA.toByte(),

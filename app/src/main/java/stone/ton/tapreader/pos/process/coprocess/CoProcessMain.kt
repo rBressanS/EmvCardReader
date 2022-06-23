@@ -50,11 +50,11 @@ object CoProcessMain : IProcess {
 
     fun initializeKernel() {}
 
-    private fun getDateOnFormat(format:String):String{
+    private fun getDateOnFormat(format: String): String {
         val dateFormatter: DateFormat = SimpleDateFormat(format)
         dateFormatter.isLenient = false
         val today = Date()
-         return dateFormatter.format(today)
+        return dateFormatter.format(today)
     }
 
     override fun processSignal(processFrom: IProcess, signal: String, params: Any?) {
@@ -69,15 +69,40 @@ object CoProcessMain : IProcess {
                         val kernel2 = CoProcessKernelC2()
                         kernel2.kernelData = kernelData
                         val syncDataList = ArrayList<BerTlv>()
-                        syncDataList.add(BerTlvBuilder().addEmpty(BerTag("6F".decodeHex())).buildTlv())
-                        syncDataList.add(BerTlvBuilder().addAmount(BerTag("9F02".decodeHex()), this.amount.toBigDecimal()).buildTlv())
+                        syncDataList.add(
+                            BerTlvBuilder().addEmpty(BerTag("6F".decodeHex())).buildTlv()
+                        )
+                        syncDataList.add(
+                            BerTlvBuilder().addAmount(
+                                BerTag("9F02".decodeHex()),
+                                this.amount.toBigDecimal()
+                            ).buildTlv()
+                        )
 
-                        syncDataList.add(BerTlvBuilder().addHex(BerTag("9A".decodeHex()), getDateOnFormat("yyMMdd")).buildTlv())
-                        syncDataList.add(BerTlvBuilder().addHex(BerTag("9F21".decodeHex()), getDateOnFormat("hhmmss")).buildTlv())
-                        for(kernelTag in kernelData.kernelTags){
-                            syncDataList.add(BerTlvBuilder().addHex(BerTag(kernelTag.tag.decodeHex()),kernelTag.value).buildTlv())
+                        syncDataList.add(
+                            BerTlvBuilder().addHex(
+                                BerTag("9A".decodeHex()),
+                                getDateOnFormat("yyMMdd")
+                            ).buildTlv()
+                        )
+                        syncDataList.add(
+                            BerTlvBuilder().addHex(
+                                BerTag("9F21".decodeHex()),
+                                getDateOnFormat("hhmmss")
+                            ).buildTlv()
+                        )
+                        for (kernelTag in kernelData.kernelTags) {
+                            syncDataList.add(
+                                BerTlvBuilder().addHex(
+                                    BerTag(kernelTag.tag.decodeHex()),
+                                    kernelTag.value
+                                ).buildTlv()
+                            )
                         }
-                        val startProcessPayload = CoProcessKernelC2.StartProcessPayload(response.fciResponse, syncDataList)
+                        val startProcessPayload = CoProcessKernelC2.StartProcessPayload(
+                            response.fciResponse,
+                            syncDataList
+                        )
                         val result = kernel2.start(startProcessPayload)
                         println(result)
 

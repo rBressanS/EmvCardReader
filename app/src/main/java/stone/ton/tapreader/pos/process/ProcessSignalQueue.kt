@@ -30,7 +30,7 @@ object ProcessSignalQueue {
                             signal.getMessage(),
                             signal.getParams()
                         )
-                    }catch (e:Exception){
+                    } catch (e: Exception) {
                         e.printStackTrace()
                     }
                 }

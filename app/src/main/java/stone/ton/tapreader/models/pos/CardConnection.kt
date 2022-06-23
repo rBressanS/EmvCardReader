@@ -25,6 +25,6 @@ class CardConnection(private val isoDep: IsoDep) : ICardConnection {
         val response = isoDep.transceive(bytes)
         val end = System.nanoTime()
         logger.info("Received: " + response.toHex())
-        return APDUResponse(response, end-begin)
+        return APDUResponse(response, end - begin)
     }
 }

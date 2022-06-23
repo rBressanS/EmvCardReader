@@ -38,9 +38,11 @@ class MainActivity : AppCompatActivity() {
         var selectedIndex by remember { mutableStateOf(0) }
         var amount by remember { mutableStateOf("12345") }
         Column(modifier = Modifier.padding(15.dp)) {
-            Box(modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentSize(Alignment.TopStart)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentSize(Alignment.TopStart)
+            ) {
                 OutlinedTextField(
                     modifier = Modifier
                         .fillMaxWidth()

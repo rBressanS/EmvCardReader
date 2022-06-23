@@ -21,10 +21,10 @@ class General {
             return result
         }
 
-        fun ByteArray.startsWith(str:String):Boolean{
+        fun ByteArray.startsWith(str: String): Boolean {
             val values = str.decodeHex()
-            for ((index, va) in values.withIndex()){
-                if(va != this[index]){
+            for ((index, va) in values.withIndex()) {
+                if (va != this[index]) {
                     return false
                 }
             }
@@ -33,7 +33,7 @@ class General {
 
         fun ByteArray.getIntValue(): Int {
             var i = 0
-            var j:Int
+            var j: Int
             var number = 0
             while (i < this.size) {
                 j = this[i].toInt()
@@ -44,23 +44,23 @@ class General {
         }
 
 
-        fun ByteArray.setBitOfByte(bit:Int, byte:Int, value:Boolean = true){
-            if(value){
+        fun ByteArray.setBitOfByte(bit: Int, byte: Int, value: Boolean = true) {
+            if (value) {
                 this[byte] = this[byte] or ((1 shl bit).toByte())
-            }else{
+            } else {
                 this[byte] = this[byte] and (1 shl bit).inv().toByte()
             }
         }
 
-        fun Byte.isBitSet(bit:Int):Boolean{
+        fun Byte.isBitSet(bit: Int): Boolean {
             return this.and((1 shl bit).toByte()) == (1 shl bit).toByte()
         }
 
-        fun ByteArray.isBitSetOfByte(bit:Int, byte:Int):Boolean{
+        fun ByteArray.isBitSetOfByte(bit: Int, byte: Int): Boolean {
             return this[byte].isBitSet(bit)
         }
 
-        fun Byte.toHex(): String{
+        fun Byte.toHex(): String {
             return String.format("%02X" + "", this)
         }
 
