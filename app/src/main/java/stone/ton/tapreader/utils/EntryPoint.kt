@@ -8,7 +8,7 @@ import stone.ton.tapreader.models.pos.Outcome
 
 class EntryPoint(
     var readActivity: ReadActivity,
-    var kernels: List<KernelData>,
+    private var kernels: List<KernelData>,
     var terminalTags: List<TerminalTag>,
 ) {
 
@@ -42,14 +42,14 @@ class EntryPoint(
     }
 
 
-    val readerCombinations: ArrayList<EntryPointCombination> = arrayListOf(
+    private val readerCombinations: ArrayList<EntryPointCombination> = arrayListOf(
         EntryPointCombination("A0000000041010", 4),
         EntryPointCombination("A0000000043060", 4),
         EntryPointCombination("A0000000031010", 2),
         EntryPointCombination("A0000000032010", 2),
     )
 
-    fun buildPreProcessIndicators(amountAuthorized: Int) {
+    private fun buildPreProcessIndicators(amountAuthorized: Int) {
         for (combinationEntry in readerCombinations) {
 
             val combinationData = combinationEntry.configurationData
@@ -112,7 +112,7 @@ class EntryPoint(
 
     }
 
-    fun preProcess(amountAuthorized: Int): Outcome {
+    private fun preProcess(amountAuthorized: Int): Outcome {
         buildPreProcessIndicators(amountAuthorized)
         val hasAnyContactlessAllowed =
             readerCombinations.any { !it.preProcessingIndicators.isContactlessApplicationNotAllowed }
@@ -122,19 +122,19 @@ class EntryPoint(
         return activateProtocol()
     }
 
-    fun activateProtocol(): Outcome {
+    private fun activateProtocol(): Outcome {
         return selectCombination()
     }
 
-    fun selectCombination(): Outcome {
+    private fun selectCombination(): Outcome {
         return activateKernel()
     }
 
-    fun activateKernel(): Outcome {
+    private fun activateKernel(): Outcome {
         return processByKernel()
     }
 
-    fun processByKernel(): Outcome {
+    private fun processByKernel(): Outcome {
         return Outcome.APPROVED
     }
 
@@ -154,13 +154,13 @@ class EntryPoint(
         activateKernel()
     }
 
-    fun setValueForByteAndBit(
+    private fun setValueForByteAndBit(
         byteArray: ByteArray,
         byteNum: Int,
         bitNum: Int,
         value: Boolean,
     ): ByteArray {
-        var myByteArray = byteArray.clone()
+        val myByteArray = byteArray.clone()
         if (value) {
             myByteArray[byteNum] = (myByteArray[byteNum].toInt() or (1 shl bitNum)).toByte()
         } else {

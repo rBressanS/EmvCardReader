@@ -3,11 +3,11 @@ package stone.ton.tapreader.pos.process.process_d
 import stone.ton.tapreader.interfaces.IUIProcessor
 import kotlin.math.pow
 
-class ProcessDisplay(var uirdProcessor: IUIProcessor) {
+class ProcessDisplay(private var uirdProcessor: IUIProcessor) {
 
     //TODO implement dataset for each language
 
-    var processDisplayConfigData = ProcessDisplayConfigData(
+    private var processDisplayConfigData = ProcessDisplayConfigData(
         UserInterfaceRequestData.Companion.LanguagePreference.PT_BR,
         "R$", 2
     )

@@ -7,15 +7,15 @@ import stone.ton.tapreader.pos.process.process_d.ProcessDisplay
 import stone.ton.tapreader.pos.process.process_d.UserInterfaceRequestData
 
 class ProcessMain(
-    val processD: ProcessDisplay,
-    val processS: ProcessSelection
+    private val processD: ProcessDisplay,
+    private val processS: ProcessSelection
 ) {
     //TODO implement dataset
 
     //TODO Stopped at EMV Kernel C8 - 2.2.5
     // 4 Step
     var amount = 0
-    var paymentType = ""
+    private var paymentType = ""
     private val languagePreference = UserInterfaceRequestData.Companion.LanguagePreference.PT_BR
 
     fun startTransaction(amount: Int, paymentType: String) {
@@ -57,7 +57,7 @@ class ProcessMain(
         this.initializeKernel()
     }
 
-    fun initializeKernel() {}
+    private fun initializeKernel() {}
 
     fun processSignal(processFrom: IProcess, signal: String, params: Any) {
         if (signal == "CardDetected") {

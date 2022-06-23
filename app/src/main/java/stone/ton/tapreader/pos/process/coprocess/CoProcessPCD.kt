@@ -17,15 +17,15 @@ import java.util.logging.Logger
 
 object CoProcessPCD : IProcess {
 
-    val logger: Logger = Logger.getLogger(this.javaClass.name)
+    private val logger: Logger = Logger.getLogger(this.javaClass.name)
 
     private val parser = BerTlvParser()
 
     lateinit var cardPoller: ICardPoller
 
-    lateinit var cardConnection: ICardConnection
+    private lateinit var cardConnection: ICardConnection
 
-    fun startPolling(cardPoller: ICardPoller) {
+    private fun startPolling(cardPoller: ICardPoller) {
         logger.info("startPolling")
         cardPoller.startCardPolling(NfcAdapter.ReaderCallback {
             cardConnection = CardConnection(IsoDep.get(it))

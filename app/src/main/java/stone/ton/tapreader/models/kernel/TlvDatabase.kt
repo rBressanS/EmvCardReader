@@ -6,7 +6,7 @@ import com.payneteasy.tlv.BerTlvBuilder
 
 class TlvDatabase {
 
-    var entries = HashMap<BerTag, TlvDatabaseEntry>()
+    private var entries = HashMap<BerTag, TlvDatabaseEntry>()
 
     fun isPresent(tag:ByteArray):Boolean{
         return entries.contains(BerTag(tag))
@@ -66,7 +66,5 @@ class TlvDatabase {
 
 
     data class TlvDatabaseEntry(var name:String,
-                                var fullTag:BerTlv){
-
-    }
+                                var fullTag:BerTlv)
 }

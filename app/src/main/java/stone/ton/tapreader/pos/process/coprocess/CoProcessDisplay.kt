@@ -12,7 +12,7 @@ object CoProcessDisplay : IProcess {
 
     //TODO implement dataset for each language
 
-    var processDisplayConfigData = ProcessDisplayConfigData(
+    private var processDisplayConfigData = ProcessDisplayConfigData(
         UserInterfaceRequestData.Companion.LanguagePreference.PT_BR,
         "R$", 2
     )

@@ -7,9 +7,9 @@ import stone.ton.tapreader.models.apdu.APDUResponse
 import stone.ton.tapreader.utils.General.Companion.toHex
 import java.util.logging.Logger
 
-class CardConnection(val isoDep: IsoDep) : ICardConnection {
+class CardConnection(private val isoDep: IsoDep) : ICardConnection {
 
-    val logger: Logger = Logger.getLogger(this.javaClass.name)
+    private val logger: Logger = Logger.getLogger(this.javaClass.name)
 
     override fun connect() {
         return isoDep.connect()

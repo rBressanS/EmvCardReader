@@ -31,7 +31,7 @@ class DOL(fullDol: ByteArray) {
         return result.toString().trim()
     }
 
-    fun getTag(fullData: ByteArray): Map<String, ByteArray> {
+    private fun getTag(fullData: ByteArray): Map<String, ByteArray> {
         var tagBytes = ByteArray(0)
         var nextByteCounter = 0
         val firstTagByte = fullData[nextByteCounter++]
@@ -49,7 +49,7 @@ class DOL(fullDol: ByteArray) {
         return mapOf("TAG" to tagBytes, "REMAINING" to remaining)
     }
 
-    fun getLength(fullData: ByteArray): Map<String, ByteArray> {
+    private fun getLength(fullData: ByteArray): Map<String, ByteArray> {
         var nextByteCounter = 0
         var lenBytes = ByteArray(0)
         lenBytes += fullData[nextByteCounter++]

@@ -1,6 +1,5 @@
 package stone.ton.tapreader.activities
 
-import android.content.Intent
 import android.nfc.NfcAdapter
 import android.os.Build
 import android.os.Bundle
@@ -35,18 +34,18 @@ class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
         apduTrace.movementMethod = ScrollingMovementMethod()
     }
 
-    fun clearTrace() {
+    private fun clearTrace() {
         apduTrace.text = ""
     }
 
-    fun addToApduTrace(tag: String, chars: CharSequence) {
+    private fun addToApduTrace(tag: String, chars: CharSequence) {
         val newText = apduTrace.text.toString() + "\n" + tag + ":" + chars
         apduTrace.text = newText
         //val editable: Editable = apduTrace.editableText
         //Selection.setSelection(editable, editable.length)
     }
 
-    var onResumeCallback: (() -> Unit)? = null
+    private var onResumeCallback: (() -> Unit)? = null
 
     public override fun onResume() {
         /*!
@@ -56,7 +55,7 @@ class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
         onResumeCallback?.invoke()
     }
 
-    var onPauseCallback: (() -> Unit)? = null
+    private var onPauseCallback: (() -> Unit)? = null
 
     public override fun onPause() {
         /*!

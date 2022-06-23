@@ -10,13 +10,13 @@ import stone.ton.tapreader.models.pos.CardConnection
 import java.io.IOException
 import java.util.logging.Logger
 
-class ProcessPCD(var ICardPoller: ICardPoller) {
+class ProcessPCD(private var ICardPoller: ICardPoller) {
 
-    val logger: Logger = Logger.getLogger(this.javaClass.name)
+    private val logger: Logger = Logger.getLogger(this.javaClass.name)
 
     // TODO Process P dataset implementation is not needed due to use of COTS
 
-    lateinit var cardConnection: ICardConnection
+    private lateinit var cardConnection: ICardConnection
 
     fun receiveCASignal(apduCommand: APDUCommand): Pair<APDUResponse?, CardConnectionStatus?> {
         return try {

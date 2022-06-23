@@ -8,7 +8,7 @@ class APDUCommand(
     var parameter1: Byte,
     var parameter2: Byte,
     var data: ByteArray? = null,
-    var le: Byte = 0x00
+    private var le: Byte = 0x00
 ) {
 
 

@@ -6,13 +6,15 @@ import com.payneteasy.tlv.BerTlv
 import com.payneteasy.tlv.BerTlvBuilder
 import stone.ton.tapreader.interfaces.IProcess
 import stone.ton.tapreader.interfaces.IProcessSignal
-import stone.ton.tapreader.models.apdu.APDUResponse
 import stone.ton.tapreader.models.pos.ProcessSignal
 import stone.ton.tapreader.pos.process.ProcessSignalQueue
 import stone.ton.tapreader.pos.process.coprocess.CoProcessPCD.cardPoller
 import stone.ton.tapreader.pos.process.process_d.UserInterfaceRequestData
 import stone.ton.tapreader.utils.DataSets
 import stone.ton.tapreader.utils.General.Companion.decodeHex
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.util.*
 
 object CoProcessMain : IProcess {
     //TODO implement dataset
@@ -21,7 +23,7 @@ object CoProcessMain : IProcess {
     // 4 Step
 
     var amount = 0
-    var paymentType = ""
+    private var paymentType = ""
     private val languagePreference = UserInterfaceRequestData.Companion.LanguagePreference.PT_BR
 
     fun startTransaction(amount: Int, paymentType: String) {
@@ -48,6 +50,13 @@ object CoProcessMain : IProcess {
 
     fun initializeKernel() {}
 
+    private fun getDateOnFormat(format:String):String{
+        val dateFormatter: DateFormat = SimpleDateFormat(format)
+        dateFormatter.isLenient = false
+        val today = Date()
+         return dateFormatter.format(today)
+    }
+
     override fun processSignal(processFrom: IProcess, signal: String, params: Any?) {
         if (signal == "CardDetected") {
 
@@ -62,6 +71,9 @@ object CoProcessMain : IProcess {
                         val syncDataList = ArrayList<BerTlv>()
                         syncDataList.add(BerTlvBuilder().addEmpty(BerTag("6F".decodeHex())).buildTlv())
                         syncDataList.add(BerTlvBuilder().addAmount(BerTag("9F02".decodeHex()), this.amount.toBigDecimal()).buildTlv())
+
+                        syncDataList.add(BerTlvBuilder().addHex(BerTag("9A".decodeHex()), getDateOnFormat("yyMMdd")).buildTlv())
+                        syncDataList.add(BerTlvBuilder().addHex(BerTag("9F21".decodeHex()), getDateOnFormat("hhmmss")).buildTlv())
                         for(kernelTag in kernelData.kernelTags){
                             syncDataList.add(BerTlvBuilder().addHex(BerTag(kernelTag.tag.decodeHex()),kernelTag.value).buildTlv())
                         }

@@ -52,7 +52,7 @@ class ProcessSelection(private val kernels: List<KernelData>) {
         amount: Int,
         additionalFilter: String
     ): ProcessSelectionResponse? {
-        var terminalCandidateList = buildCandidateList(amount, additionalFilter)
+        val terminalCandidateList = buildCandidateList(amount, additionalFilter)
         val getPPSEApdu =
             APDUCommand.buildSelectApplication("32 50 41 59 2E 53 59 53 2E 44 44 46 30 31")
         val ppseResponse = cardConnection.transceive(getPPSEApdu)

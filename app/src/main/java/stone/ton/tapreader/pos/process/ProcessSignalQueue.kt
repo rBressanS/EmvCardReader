@@ -10,13 +10,13 @@ import java.util.logging.Logger
 
 object ProcessSignalQueue {
 
-    val logger: Logger = Logger.getLogger(this.javaClass.name)
+    private val logger: Logger = Logger.getLogger(this.javaClass.name)
 
-    var isStarted = false
+    private var isStarted = false
 
-    val myQueue = Channel<IProcessSignal>()
+    private val myQueue = Channel<IProcessSignal>()
 
-    var scope = CoroutineScope(Dispatchers.Default)
+    private var scope = CoroutineScope(Dispatchers.Default)
 
     fun start() {
         if (!isStarted) {

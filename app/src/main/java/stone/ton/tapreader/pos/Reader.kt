@@ -14,8 +14,8 @@ class Reader(
     readActivity: ReadActivity,
     kernels: List<KernelData>,
     terminalTags: List<TerminalTag>,
-    var cardPoller: ICardPoller,
-    var uiProcessor: IUIProcessor
+    private var cardPoller: ICardPoller,
+    private var uiProcessor: IUIProcessor
 ) {
 
     fun startByProcess(amount: Int?, paymentType: String?) {

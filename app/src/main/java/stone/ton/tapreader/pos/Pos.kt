@@ -11,9 +11,9 @@ import stone.ton.tapreader.utils.AssetsParser
 import stone.ton.tapreader.utils.DataSets
 
 class Pos(readActivity: ReadActivity, cardPoller: ICardPoller, uiProcessor: IUIProcessor) {
-    val terminalTags = getTerminalTags(readActivity)
+    private val terminalTags = getTerminalTags(readActivity)
     val caPublicKeys = getCaPublicKeys(readActivity)
-    val kernels = getKernels(readActivity)
+    private val kernels = getKernels(readActivity)
 
 
     private fun getTerminalTags(context: Context): List<TerminalTag> {

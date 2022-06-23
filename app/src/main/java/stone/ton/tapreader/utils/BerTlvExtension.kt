@@ -31,23 +31,22 @@ class BerTlvExtension {
             return returnable
         }
 
-        fun BerTlv.getBerLen():ByteArray {
-            val aLength:Int
-            aLength = if(isPrimitive){
+        private fun BerTlv.getBerLen():ByteArray {
+            val aLength:Int = if(isPrimitive){
                 this.bytesValue.size
             }else{
                 this.getListAsByteArray().size
             }
 
             val berLen: ByteArray
-            if (aLength < 0x80) {
-                berLen = byteArrayOf(aLength.toByte())
+            berLen = if (aLength < 0x80) {
+                byteArrayOf(aLength.toByte())
             } else if (aLength < 0x100) {
-                berLen = byteArrayOf(0x81.toByte(), aLength.toByte())
+                byteArrayOf(0x81.toByte(), aLength.toByte())
             } else if (aLength < 0x10000) {
-                berLen = byteArrayOf(0x82.toByte(), (aLength / 0x100).toByte(), (aLength % 0x100).toByte())
+                byteArrayOf(0x82.toByte(), (aLength / 0x100).toByte(), (aLength % 0x100).toByte())
             } else if (aLength < 0x1000000) {
-                berLen = byteArrayOf(0x83.toByte(),(aLength / 0x10000).toByte(), (aLength / 0x100).toByte(), (aLength % 0x100).toByte())
+                byteArrayOf(0x83.toByte(),(aLength / 0x10000).toByte(), (aLength / 0x100).toByte(), (aLength % 0x100).toByte())
             } else {
                 throw IllegalStateException("length [$aLength] out of range (0x1000000)")
             }
