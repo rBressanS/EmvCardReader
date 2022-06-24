@@ -73,6 +73,7 @@ class CoProcessKernelC2 {
         "95",
         "9F33",
         "9F34",
+        "DF8116",
     )
 
     private fun syncData(startProcessPayload: StartProcessPayload) {
@@ -197,6 +198,7 @@ class CoProcessKernelC2 {
     private var rrpFailedAfterAttempts = false
 
     private fun processRRP(entropy: ByteArray): OutSignal? {
+        addTagToDatabase("DF8301", entropy.toHex())
         try {
             val exchangeRRD = buildExchangeRelayResistanceData(entropy)
             val rrdResponse = communicateWithCard(exchangeRRD)
@@ -218,6 +220,11 @@ class CoProcessKernelC2 {
                 val maxTimeForProcessingRelayResistanceApdu =
                     rrpResponse.bytesValue.copyOfRange(6, 8)
                 val deviceEstimatedTransmissionTimeForRR = rrpResponse.bytesValue.copyOfRange(8, 10)
+                println("Adding RRP tags to database")
+                println(deviceRelayResistanceEntropy.toHex())
+                println(minTimeForProcessingRelayResistanceApdu.toHex())
+                println(maxTimeForProcessingRelayResistanceApdu.toHex())
+                println(deviceEstimatedTransmissionTimeForRR.toHex())
                 addTagToDatabase("DF8302", deviceRelayResistanceEntropy.toHex())
                 addTagToDatabase("DF8303", minTimeForProcessingRelayResistanceApdu.toHex())
                 addTagToDatabase("DF8304", maxTimeForProcessingRelayResistanceApdu.toHex())
@@ -341,6 +348,7 @@ class CoProcessKernelC2 {
     }
 
     private fun generateUnpredictableNumber() {
+        //TODO implement algorithm to generate number
         addTagToDatabase("9F37", "76543210")
     }
 
@@ -367,7 +375,7 @@ class CoProcessKernelC2 {
             terminalCapabilities.byte3 = it.fullTag.intValue.toByte()
         }
 
-        //TODO implement algorithm to generate number
+
         generateUnpredictableNumber()
 
         var outSignal = processFciResponse(startProcessPayload.fciResponse)
@@ -572,9 +580,7 @@ class CoProcessKernelC2 {
         cdol = kernelDatabase.getTlv("8C".decodeHex())?.fullTag
 
         val cdolData = buildDolValue(cdol, false)
-        //val cdolData = "8342000000000100000000000000082600000000000826190819003357A30A21000000000000000000001F03021205050000000000000000000000000000000000000000".decodeHex()
         var shouldRequestCda = false
-        //TODO Generate AC
         if(odaStatus=="CDA"){
             if(tvr.isBitSetOfByte(2, 0)){
                 // CDA Failed
@@ -599,7 +605,6 @@ class CoProcessKernelC2 {
         try {
             genAcResponse = communicateWithCard(genAcCommand)
         } catch (e: IOException) {
-            //TODO
             userInterfaceRequestData[0] = 0b00100001
             userInterfaceRequestData[1] = 0b00000010
             userInterfaceRequestData[2] = 0
@@ -621,12 +626,207 @@ class CoProcessKernelC2 {
             errorIndication[4] = genAcResponse.sw2
             return buildOutSignal()
         }
+        if(!genAcResponse.getParsedData().isEmpty() && genAcResponse.getParsedData().tag == BerTag(
+                0x77
+            )){
+            kernelDatabase.parseAndStoreCardResponse(genAcResponse.getParsedData())
+        }else{
+            if(!genAcResponse.getParsedData().isEmpty() && genAcResponse.getParsedData().tag == BerTag(
+                    0x80
+                )){
+                val responseMessageDataField = genAcResponse.getParsedData().bytesValue
+                val parseNOK = responseMessageDataField.size < 11 ||
+                        responseMessageDataField.size > 43 ||
+                        kernelDatabase.isPresent("9F27".decodeHex()) ||
+                        kernelDatabase.isPresent("9F36".decodeHex()) ||
+                        kernelDatabase.isPresent("9F26".decodeHex()) ||
+                        (responseMessageDataField.size >11 && kernelDatabase.isPresent("9F10".decodeHex()))
+                if(parseNOK){
+                    return buildOutSignal()
+                }
+                kernelDatabase.add(BerTlvBuilder().addBytes(
+                    BerTag("9F27".decodeHex()),
+                    byteArrayOf(responseMessageDataField[0])
+                ).buildTlv())
+                kernelDatabase.add(BerTlvBuilder().addBytes(
+                    BerTag("9F36".decodeHex()),
+                    responseMessageDataField.copyOfRange(1,3)
+                ).buildTlv())
+                kernelDatabase.add(BerTlvBuilder().addBytes(
+                    BerTag("9F26".decodeHex()),
+                    responseMessageDataField.copyOfRange(3,11)
+                ).buildTlv())
+                if(responseMessageDataField.size > 11){
+                    kernelDatabase.add(BerTlvBuilder().addBytes(
+                        BerTag("9F10".decodeHex()),
+                        responseMessageDataField.copyOfRange(11, responseMessageDataField.size)
+                    ).buildTlv())
+                }
+            }
+        }
 
+        if(!kernelDatabase.isPresent("9F27".decodeHex()) || !kernelDatabase.isPresent("9F36".decodeHex())){
+            return buildOutSignal()
+        }
+        val cid = kernelDatabase.getTlv("9F27".decodeHex())!!.fullTag
+        val shouldContinue = (cid.bytesValue[0].and(0xC0.toByte()) == 0x40.toByte()) ||
+                (cid.bytesValue[0].and(0xC0.toByte()) == 0x80.toByte() && (acType == "TC"||acType=="ARQC")) ||
+                (cid.bytesValue[0].and(0xC0.toByte()) == 0x00.toByte())
+        if(!shouldContinue){
+            return buildOutSignal()
+        }
+        userInterfaceRequestData[0] = 0b11110 //MID = clear display
+        userInterfaceRequestData[1] = 0b100 // status = card read successfully
+        userInterfaceRequestData[2] = 0b0 // Hold time = 0
+        userInterfaceRequestData[3] = 0b0 // Hold time = 0
+        userInterfaceRequestData[4] = 0b0 // Hold time = 0
 
+        if(kernelDatabase.isPresent("9F4B".decodeHex())){
+            //S910.1
+            val caPkIndex = kernelDatabase.getTlv(BerTag(0x8F))!!.fullTag.hexValue!!
+            val rid = "A000000004"
+            val caPk = DataSets.caPublicKeys.find { it.index == caPkIndex && it.rId == rid }
+                ?: return buildOutSignal()
+            //Perform CDA
+            val ICCPKOk = true
+            if(!ICCPKOk){
+                tvr.setBitOfByte(2, 0) // CDA Failed
+                return buildOutSignal()
+            }
+            val rrpPerformed = tvr.isBitSetOfByte(1,4) || !tvr.isBitSetOfByte(0,4)
+            if(rrpPerformed){
+                //S910.4.1
+                //TODO Verify SDAD EMV Book2 Section 6.6
+                val iccDynamicData = ByteArray(45)
+                val iccDynamicNumberLength = iccDynamicData[0]
+                if(iccDynamicData.size < (44 + iccDynamicNumberLength)){
+                    tvr.setBitOfByte(2, 0) // CDA Failed
+                    return buildOutSignal()
+                }
+                val iccDynamicNumber = iccDynamicData.copyOfRange(1,1+iccDynamicNumberLength)
+                val applicationCryptogram = iccDynamicData.copyOfRange(2+iccDynamicNumberLength,10+iccDynamicNumberLength)
+                kernelDatabase.add(BerTlvBuilder().addBytes(
+                    BerTag("9F4C".decodeHex()),
+                    iccDynamicNumber
+                ).buildTlv())
+                kernelDatabase.add(BerTlvBuilder().addBytes(
+                    BerTag("9F26".decodeHex()),
+                    applicationCryptogram
+                ).buildTlv())
 
-        //Start S12
+                val terminalRelayResistanceEntropy = kernelDatabase.getTlv("DF8301".decodeHex())!!.fullTag.bytesValue
+                val deviceRelayResistanceEntropy = kernelDatabase.getTlv("DF8302".decodeHex())!!.fullTag.bytesValue
+                val minTimeForProcessingApdu = kernelDatabase.getTlv("DF8303".decodeHex())!!.fullTag.bytesValue
+                val maxTimeForProcessingApdu = kernelDatabase.getTlv("DF8304".decodeHex())!!.fullTag.bytesValue
+                val deviceEstimatedTimeForResponse = kernelDatabase.getTlv("DF8305".decodeHex())!!.fullTag.bytesValue
 
+                val cdaTerminalRelayResistanceEntropy = iccDynamicData.copyOfRange(30+iccDynamicNumberLength,30+iccDynamicNumberLength+4)
+                val cdaDeviceRelayResistanceEntropy = iccDynamicData.copyOfRange(34+iccDynamicNumberLength,34+iccDynamicNumberLength+4)
+                val cdaMinTimeForProcessingApdu = iccDynamicData.copyOfRange(38+iccDynamicNumberLength,38+iccDynamicNumberLength+2)
+                val cdaMaxTimeForProcessingApdu = iccDynamicData.copyOfRange(40+iccDynamicNumberLength,40+iccDynamicNumberLength+2)
+                val cdaDeviceEstimatedTimeForResponse = iccDynamicData.copyOfRange(42+iccDynamicNumberLength,42+iccDynamicNumberLength+2)
+                if(!terminalRelayResistanceEntropy.contentEquals(cdaTerminalRelayResistanceEntropy) ||
+                    !deviceRelayResistanceEntropy.contentEquals(cdaDeviceRelayResistanceEntropy) ||
+                    !minTimeForProcessingApdu.contentEquals(cdaMinTimeForProcessingApdu) ||
+                    !maxTimeForProcessingApdu.contentEquals(cdaMaxTimeForProcessingApdu) ||
+                    !deviceEstimatedTimeForResponse.contentEquals(cdaDeviceEstimatedTimeForResponse) ){
+                    tvr.setBitOfByte(2, 0) // CDA Failed
+                    return buildOutSignal()
+                }
+            }else{
+                //S910.4.0
+                //TODO Verify SDAD EMV Book2 Section 6.6
+                val iccDynamicData = ByteArray(30)
+                val iccDynamicNumberLength = iccDynamicData[0]
+                if(iccDynamicData.size < (30 + iccDynamicNumberLength)){
+                    tvr.setBitOfByte(2, 0) // CDA Failed
+                    return buildOutSignal()
+                }
+                val iccDynamicNumber = iccDynamicData.copyOfRange(1,1+iccDynamicNumberLength)
+                val applicationCryptogram = iccDynamicData.copyOfRange(2+iccDynamicNumberLength,10+iccDynamicNumberLength)
+                kernelDatabase.add(BerTlvBuilder().addBytes(
+                    BerTag("9F4C".decodeHex()),
+                    iccDynamicNumber
+                ).buildTlv())
+                kernelDatabase.add(BerTlvBuilder().addBytes(
+                    BerTag("9F26".decodeHex()),
+                    applicationCryptogram
+                ).buildTlv())
+            }
+        }else{
+            //S910.30
+            val applicationCryptogram = kernelDatabase.getTlv("9F26".decodeHex())?.fullTag
+            if(applicationCryptogram == null){
+                tvr.setBitOfByte(2, 0) // CDA Failed
+                return buildOutSignal()
+            }
+            if(applicationCryptogram.bytesValue[0].and(0xC0.toByte()) != 0x00.toByte()){
+                //34
+                if(shouldRequestCda){
+                    tvr.setBitOfByte(2, 0) // CDA Failed
+                    return buildOutSignal()
+                }
+                val rrpPerformed = tvr.isBitSetOfByte(1,4) || !tvr.isBitSetOfByte(0,4)
+                if(rrpPerformed){
+                    //TODO S910.39
+                }
 
+            }
+        }
+        outcomeParameter.dataRecordPresent = true
+        val PCII = kernelDatabase.getTlv("DF4B".decodeHex())?.fullTag?.bytesValue
+        if(PCII!=null && !PCII.and(byteArrayOf(0x00,0x03,0x0F)).contentEquals(ByteArray(3))){
+            //S72
+            outcomeParameter.status = 0b100 // END_APPLICATION
+            outcomeParameter.start = 0b1 // B
+            val phoneMessageTable = kernelDatabase.getTlv("DF8131".decodeHex())!!.fullTag.bytesValue
+            for(phoneMessageEntry in phoneMessageTable.toList().chunked(8)){
+                val pciiMask = phoneMessageEntry.subList(0,3).toByteArray()
+                val pciiValue = phoneMessageEntry.subList(3,6).toByteArray()
+                val messageId = phoneMessageEntry.subList(6,7).toByteArray()
+                val status = phoneMessageEntry.subList(7,8).toByteArray()
+                if(pciiMask.and(PCII).contentEquals(pciiValue)){
+                    userInterfaceRequestData[0] = messageId[0]
+                    userInterfaceRequestData[1] = status[0]
+                    userInterfaceRequestData[2] = 0x0
+                    userInterfaceRequestData[3] = 0x0
+                    userInterfaceRequestData[4] = 0x0
+                    break
+                }
+            }
+        }else{
+            //S74
+            if(cid.bytesValue[0].and(0xC0.toByte()) == 0x40.toByte()){
+                outcomeParameter.status = 0b1 // APPROVED
+            }else{
+                if(cid.bytesValue[0].and(0xC0.toByte()) == 0x80.toByte()){
+                    outcomeParameter.status = 0b11 // Online Request
+                }else{
+                    outcomeParameter.status = 0b10 // Declined
+                }
+            }
+            userInterfaceRequestData[1] = 0x0 // NOT READY
+            if(cid.bytesValue[0].and(0xC0.toByte()) == 0x40.toByte()){
+                if(outcomeParameter.CVM == 0b1){
+                    userInterfaceRequestData[0] = 0b11010 // APProved_sign
+                }else{
+                    userInterfaceRequestData[0] = 0b11 // APProved_sign
+                }
+            }else{
+                if(cid.bytesValue[0].and(0xC0.toByte()) == 0x80.toByte()){
+                    userInterfaceRequestData[0] = 0b11011 // authorising_wait
+                }else{
+                    userInterfaceRequestData[0] = 0b111 // authorising_wait
+                }
+            }
+        }
+        if(PCII!=null && !PCII.and(byteArrayOf(0x00,0x03,0x0F)).contentEquals(ByteArray(3))){
+            outcomeParameter.uiRequestOnRestartPresent = true
+
+        }else{
+            outcomeParameter.uiRequestOnOutcomePresent = true
+        }
+        //Generate ARQC
         return buildOutSignal()
     }
 
@@ -716,7 +916,7 @@ class CoProcessKernelC2 {
             val cvCode = cvRule[0]
             val cvRuleShouldContinue = cvCode.isBitSet(6)
             if (cvCondition != null) {
-                //TODO implement should Apply
+
                 val shouldApplyCondition = shouldApplyCondition(
                     cvCondition,
                     xAmount,
@@ -803,7 +1003,7 @@ class CoProcessKernelC2 {
         amount: Int,
         transactionType: String?
     ): Boolean {
-        //TODO implement
+        //TODO implement should Apply
         return true
     }
 
@@ -994,8 +1194,8 @@ class CoProcessKernelC2 {
         val onlineResponseData: Int = 0,
         var CVM: Int = 0,
         var uiRequestOnOutcomePresent: Boolean = false,
-        val uiRequestOnRestartPresent: Boolean = false,
-        val dataRecordPresent: Boolean = false,
+        var uiRequestOnRestartPresent: Boolean = false,
+        var dataRecordPresent: Boolean = false,
         val didescretionaryDataPresent: Boolean = false,
         var receipt: Boolean = false,
         val alternateInterfacePreference: Int = 0,

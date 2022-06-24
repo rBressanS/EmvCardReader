@@ -39,6 +39,7 @@ class TlvDatabase {
     }
 
     fun add(tlv: BerTlv) {
+        println("Adding TLV: ${tlv}")
         entries[tlv.tag] = TlvDatabaseEntry("", tlv)
     }
 
