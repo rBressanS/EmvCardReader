@@ -1,0 +1,407 @@
+{
+  "kernelId": 2,
+  "config": [
+    {
+      "tag": "9F39",
+      "value": "07"
+    },
+    {
+      "tag": "9F40",
+      "value": "4000802000"
+    },
+    {
+      "tag": "9F09",
+      "value": "0002"
+    },
+    {
+      "tag": "9F53",
+      "value": "32"
+    },
+    {
+      "tag": "DF8117",
+      "value": "00"
+    },
+    {
+      "tag": "DF8118",
+      "value": "40"
+    },
+    {
+      "tag": "DF8119",
+      "value": "08"
+    },
+    {
+      "tag": "DF811A",
+      "value": "9F6A04"
+    },
+    {
+      "tag": "DF8130",
+      "value": "0D"
+    },
+    {
+      "tag": "DF811B",
+      "value": "A0"
+    },
+    {
+      "tag": "DF810C",
+      "value": "02"
+    },
+    {
+      "tag": "DF812D",
+      "value": "000013"
+    },
+    {
+      "tag": "DF8131",
+      "value": "000001000001200000080000080020000004000004002000000100000100200000020000020020000000000000000700"
+    },
+    {
+      "tag": "DF8123",
+      "value": "000000000000"
+    },
+    {
+      "tag": "DF8124",
+      "value": "000009999900"
+    },
+    {
+      "tag": "DF8125",
+      "value": "000009999900"
+    },
+    {
+      "tag": "DF8126",
+      "value": "000000020000"
+    },
+    {
+      "tag": "DF811F",
+      "value": "08"
+    },
+    {
+      "tag": "DF8120",
+      "value": "F45084800C"
+    },
+    {
+      "tag": "DF8121",
+      "value": "0000000000"
+    },
+    {
+      "tag": "DF8122",
+      "value": "F45084800C"
+    },
+    {
+      "tag": "DF8127",
+      "value": "01F4"
+    },
+    {
+      "tag": "DF810D",
+      "value": ""
+    },
+    {
+      "tag": "9F7E",
+      "value": ""
+    },
+    {
+      "tag": "EF",
+      "value": "0000000000"
+    },
+    {
+      "tag": "9F33",
+      "value": "2048C8"
+    },
+    {
+      "tag": "9F1C",
+      "value": ""
+    },
+    {
+      "tag": "9F1A",
+      "value": "0076"
+    },
+    {
+      "tag": "9F35",
+      "value": "21"
+    }
+  ],
+  "application": [
+    {
+      "aid": [
+        "B012345678"
+      ],
+      "config": [
+        {
+          "tag": "DF8126",
+          "value": "000000020000"
+        },
+        {
+          "tag": "9F1D",
+          "value": "4C00800000000000"
+        }
+      ],
+      "transaction": [
+        {
+          "transactionType": "00",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": [
+            {
+              "tag": "DF8126",
+              "value": "000000020000"
+            }
+          ]
+        },
+        {
+          "transactionType": "01",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": []
+        },
+        {
+          "transactionType": "20",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": []
+        },
+        {
+          "transactionType": "09",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": []
+        },
+        {
+          "transactionType": "17",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": []
+        }
+      ]
+    },
+    {
+      "aid": [
+        "A0000000041010",
+        "A0000000041010D07613"
+      ],
+      "filteringSelector": "credit",
+      "config": [
+        {
+          "tag": "DF8126",
+          "value": "000000020000"
+        }
+      ],
+      "transaction": [
+        {
+          "transactionType": "00",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": [
+            {
+              "tag": "DF8126",
+              "value": "000000020000"
+            },
+            {
+              "tag": "9F1D",
+              "value": "4C00800000000000"
+            }
+          ]
+        },
+        {
+          "transactionType": "01",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": []
+        },
+        {
+          "transactionType": "20",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": [
+            {
+              "tag": "DF8121",
+              "value": "FFFFFFFFFF"
+            }
+          ]
+        },
+        {
+          "transactionType": "09",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": [
+            {
+              "tag": "9F1D",
+              "value": "4C00800000000000"
+            }
+          ]
+        },
+        {
+          "transactionType": "17",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": []
+        }
+      ]
+    },
+    {
+      "aid": [
+        "A0000000041010D07612"
+      ],
+      "filteringSelector": "debit",
+      "config": [
+        {
+          "tag": "DF8126",
+          "value": "000000020000"
+        }
+      ],
+      "transaction": [
+        {
+          "transactionType": "00",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": [
+            {
+              "tag": "DF8126",
+              "value": "000000020000"
+            },
+            {
+              "tag": "9F1D",
+              "value": "4C00800000000000"
+            }
+          ]
+        },
+        {
+          "transactionType": "01",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": []
+        },
+        {
+          "transactionType": "20",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": [
+            {
+              "tag": "DF8121",
+              "value": "FFFFFFFFFF"
+            }
+          ]
+        },
+        {
+          "transactionType": "09",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": [
+            {
+              "tag": "9F1D",
+              "value": "4C00800000000000"
+            }
+          ]
+        },
+        {
+          "transactionType": "17",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": []
+        }
+      ]
+    },
+    {
+      "aid": [
+        "A0000000043060"
+      ],
+      "filteringSelector": "debit",
+      "config": [
+        {
+          "tag": "DF8126",
+          "value": "000000020000"
+        },
+        {
+          "tag": "DF8120",
+          "value": "F45004800C"
+        },
+        {
+          "tag": "DF8121",
+          "value": "0000800000"
+        },
+        {
+          "tag": "DF8122",
+          "value": "F45004800C"
+        },
+        {
+          "tag": "9F1D",
+          "value": "4C00800000000000"
+        }
+      ],
+      "transaction": [
+        {
+          "transactionType": "01",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": []
+        },
+        {
+          "transactionType": "00",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": []
+        },
+        {
+          "transactionType": "20",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": [
+            {
+              "tag": "DF8121",
+              "value": "FFFFFFFFFF"
+            }
+          ]
+        },
+        {
+          "transactionType": "09",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": []
+        },
+        {
+          "transactionType": "17",
+          "statusCheckSupportFlag": true,
+          "zeroAmountAllowedFlag": true,
+          "extendedSelectionSupportFlag": false,
+          "partialSelectionSupportFlag": true,
+          "config": []
+        }
+      ]
+    }
+  ]
+}

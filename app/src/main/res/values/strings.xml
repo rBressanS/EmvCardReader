@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">TapReader</string>
+    <string-array name="spinnerItems">
+        <item>credit</item>
+        <item>debit</item>
+    </string-array>
 </resources>
