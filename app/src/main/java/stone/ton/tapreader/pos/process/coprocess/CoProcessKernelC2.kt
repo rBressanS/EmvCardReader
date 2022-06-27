@@ -453,8 +453,6 @@ class CoProcessKernelC2 {
             tvr.setBitOfByte(7, 0) // Offline data authentication was not performed
         }
 
-        var cdol: BerTlv?
-
         val aflEntries = activeAfl.toList().chunked(4)
         for (data in aflEntries) {
             val aflEntry = AFLEntry(data.toByteArray())
@@ -545,8 +543,11 @@ class CoProcessKernelC2 {
             }
         }
 
+        var checkpoint = 1
+        println("Checkpoint: ${checkpoint++}")
         val amountAuthorized = kernelDatabase.getTlv("9F02".decodeHex())?.fullTag?.intValue
             ?: return buildOutSignal() // TODO corrigir page 253 456.13
+        println("Checkpoint: ${checkpoint++}")
         if (amountAuthorized > readerContactlessTransactionLimit) {
             return buildOutSignal() // TODO corrigir page 253 456.15
         }
@@ -554,6 +555,7 @@ class CoProcessKernelC2 {
                     kernelDatabase.isPresent("5A".decodeHex()) && // TRACK2 EQUIVALENT DATA
                     kernelDatabase.isPresent("8C".decodeHex()))
         ) {
+            println("Checkpoint: ${checkpoint++}")
             return buildOutSignal() // TODO corrigir page 254 456.17
         }
 
@@ -569,6 +571,7 @@ class CoProcessKernelC2 {
             }
             val sdaTag = kernelDatabase.getTlv(BerTag(0x9F, 0x4A))
             if (!(sdaTag != null && sdaTag.fullTag.intValue == 0x82)) {
+                println("Checkpoint: ${checkpoint++}")
                 return buildOutSignal() // TODO corrigir 257 456.27.1
             }
             if (signedData.length < 2048 * 2) {
@@ -616,7 +619,7 @@ class CoProcessKernelC2 {
         println(acType)
 
         val genAcCommand: APDUCommand
-        cdol = kernelDatabase.getTlv("8C".decodeHex())?.fullTag
+        var cdol: BerTlv? = kernelDatabase.getTlv("8C".decodeHex())?.fullTag
 
         val cdolData = buildDolValue(cdol, false)
         //val cdolData = "8342000000000100000000000000082600000000000826190819003357A30A21000000000000000000001F03021205050000000000000000000000000000000000000000".decodeHex()
@@ -655,6 +658,7 @@ class CoProcessKernelC2 {
             outcomeParameter.start =OutcomeParameter.Start.B
             errorIndication.l1 = ErrorIndication.L1.TRANSMISSION_ERROR
             errorIndication.msgOnError = MessageIdentifier.PRESENT_CARD_AGAIN
+            println("Checkpoint: ${checkpoint++}")
             return buildOutSignal()
         }
         if (!genAcResponse.wasSuccessful()) {
@@ -665,7 +669,7 @@ class CoProcessKernelC2 {
             errorIndication.l2 = ErrorIndication.L2.STATUS_BYTES
             errorIndication.sw1 = genAcResponse.sw1
             errorIndication.sw2 = genAcResponse.sw2
-
+            println("Checkpoint: ${checkpoint++}")
             return buildOutSignal()
         }
 
@@ -673,6 +677,7 @@ class CoProcessKernelC2 {
         //Start S12
 
 
+        println("Checkpoint: ${checkpoint++}")
         return buildOutSignal()
     }
 
@@ -733,7 +738,7 @@ class CoProcessKernelC2 {
                 cvmResult.cvmResult = CvmResults.CvmResult.SUCCESSFUL
                 outcomeParameter.CVM = OutcomeParameter.Cvm.NO_CVM
             } else {
-                cvmResult.cvmPerformed = 0x3F
+                cvmResult.cvmPerformed = CvmResults.CvmCode.NO_CVM
                 cvmResult.cvmCondition = CvmResults.CvmCondition.ALWAYS
                 cvmResult.cvmResult = CvmResults.CvmResult.SUCCESSFUL
                 outcomeParameter.CVM = OutcomeParameter.Cvm.CONFIRMATION_CODE_VERIFIED
@@ -741,7 +746,7 @@ class CoProcessKernelC2 {
             return
         }
         if (!aip.isBitSetOfByte(4, 0)) {
-            cvmResult.cvmPerformed = 0x3F
+            cvmResult.cvmPerformed = CvmResults.CvmCode.NO_CVM
             cvmResult.cvmCondition = CvmResults.CvmCondition.ALWAYS
             cvmResult.cvmResult = CvmResults.CvmResult.UNKNOWN
             outcomeParameter.CVM = OutcomeParameter.Cvm.NO_CVM
@@ -749,7 +754,7 @@ class CoProcessKernelC2 {
         }
         val cvmList = kernelDatabase.getTlv("8E".decodeHex())?.fullTag?.bytesValue
         if (!(cvmList != null && cvmList.isNotEmpty())) {
-            cvmResult.cvmPerformed = 0x3F
+            cvmResult.cvmPerformed = CvmResults.CvmCode.NO_CVM
             cvmResult.cvmCondition = CvmResults.CvmCondition.ALWAYS
             cvmResult.cvmResult = CvmResults.CvmResult.UNKNOWN
             outcomeParameter.CVM = OutcomeParameter.Cvm.NO_CVM
@@ -769,6 +774,7 @@ class CoProcessKernelC2 {
             if (cvCondition != null) {
                 //TODO implement should Apply
                 val shouldApplyCondition = shouldApplyCondition(
+                    cvCode,
                     cvCondition,
                     xAmount,
                     yAmount,
@@ -785,11 +791,11 @@ class CoProcessKernelC2 {
                         outcomeParameter.CVM = OutcomeParameter.Cvm.NO_CVM
                         tvr.setBitOfByte(7, 2) // Cardholder verification was not successful
                         if (cvmCode == CvmResults.CvmCode.FAIL_CVM) {
-                            cvmResult.cvmPerformed = cvRule[0]
-                            cvmResult.cvmCondition = cvRule[1]
+                            cvmResult.cvmPerformed = CvmResults.CvmCode.FAIL_CVM
+                            cvmResult.cvmCondition = CvmResults.CvmCondition.from(cvRule[1])!!
                             cvmResult.cvmResult = CvmResults.CvmResult.FAILED
                         } else {
-                            cvmResult.cvmPerformed = 0x3F
+                            cvmResult.cvmPerformed = CvmResults.CvmCode.NO_CVM
                             cvmResult.cvmCondition = CvmResults.CvmCondition.ALWAYS
                             cvmResult.cvmResult = CvmResults.CvmResult.FAILED
                         }
@@ -799,8 +805,8 @@ class CoProcessKernelC2 {
                     val isCvmCodeSupported = terminalCapabilities.supportsCvmCode(cvmCode)
                     if (isCvmCodeSupported && cvmCode.value.and(0x3F.toByte()) != 0.toByte()) {
                         //CVM.18
-                        cvmResult.cvmPerformed = cvRule[0]
-                        cvmResult.cvmCondition = cvRule[1]
+                        cvmResult.cvmPerformed = CvmResults.CvmCode.from(cvRule[0])!!
+                        cvmResult.cvmCondition = CvmResults.CvmCondition.from(cvRule[1])!!
                         if (cvmCode == CvmResults.CvmCode.ENCIPHERED_ONLINE_PIN) {
                             outcomeParameter.CVM = OutcomeParameter.Cvm.ONLINE_PIN
                             cvmResult.cvmResult = CvmResults.CvmResult.UNKNOWN
@@ -825,11 +831,11 @@ class CoProcessKernelC2 {
                         outcomeParameter.CVM = OutcomeParameter.Cvm.NO_CVM
                         tvr.setBitOfByte(7, 2) // Cardholder verification was not successful
                         if (cvmCode == CvmResults.CvmCode.FAIL_CVM) {
-                            cvmResult.cvmPerformed = CvmResults.CvmCode.from(cvRule[0])
-                            cvmResult.cvmCondition = CvmResults.CvmCondition.from(cvRule[1])
+                            cvmResult.cvmPerformed = CvmResults.CvmCode.from(cvRule[0])!!
+                            cvmResult.cvmCondition = CvmResults.CvmCondition.from(cvRule[1])!!
                             cvmResult.cvmResult = CvmResults.CvmResult.FAILED
                         } else {
-                            cvmResult.cvmPerformed = 0x3F
+                            cvmResult.cvmPerformed = CvmResults.CvmCode.NO_CVM
                             cvmResult.cvmCondition = CvmResults.CvmCondition.ALWAYS
                             cvmResult.cvmResult = CvmResults.CvmResult.FAILED
                         }
@@ -839,7 +845,7 @@ class CoProcessKernelC2 {
 
             }
         }
-        cvmResult.cvmPerformed = 0x3F
+        cvmResult.cvmPerformed = CvmResults.CvmCode.NO_CVM
         cvmResult.cvmCondition = CvmResults.CvmCondition.ALWAYS
         cvmResult.cvmResult = CvmResults.CvmResult.FAILED
         outcomeParameter.CVM = OutcomeParameter.Cvm.NO_CVM
@@ -848,6 +854,7 @@ class CoProcessKernelC2 {
     }
 
     private fun shouldApplyCondition(
+        cvCode: Byte,
         condition: CvmResults.CvmCondition,
         xValue: Int,
         yValue: Int,
@@ -855,6 +862,9 @@ class CoProcessKernelC2 {
         transactionType: String?
     ): Boolean {
         //TODO implement
+        if(cvCode == 0x5e.toByte()){
+            return false
+        }
         return true
     }
 
