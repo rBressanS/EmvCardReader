@@ -18,11 +18,11 @@ import stone.ton.tapreader.utils.AssetsParser
 import stone.ton.tapreader.utils.DataSets
 
 @RunWith(MockitoJUnitRunner::class)
-class MockedCardConnectionTest {
+class C2KernelTest {
     @Test
     fun doTransaction() {
         val kernel = CoProcessKernelC2()
-        val mockedCard = MockedCards.getMockCardBTT()
+        val mockedCard = MockedCards.getMockCardBtt2()
         CoProcessPCD.cardConnection = mockedCard
         DataSets.caPublicKeys = getCaPks()
         DataSets.terminalTags = getTerminalTags()
@@ -30,7 +30,7 @@ class MockedCardConnectionTest {
 
         val outcome = kernel.start(buildStartPayload(mockedCard.fciResponse, getMockedTerminalOne()))
         println(outcome)
-        assertTrue(outcome.outcomeParameter.status == CoProcessKernelC2.OutcomeParameter.Status.APPROVED)
+        assertTrue(outcome.outcomeParameter.status == CoProcessKernelC2.OutcomeParameter.Status.ONLINE_REQUEST)
     }
 
     private fun loadDataSets(context:Context){

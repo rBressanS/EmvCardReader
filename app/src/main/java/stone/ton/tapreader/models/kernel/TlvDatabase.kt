@@ -3,6 +3,7 @@ package stone.ton.tapreader.models.kernel
 import com.payneteasy.tlv.BerTag
 import com.payneteasy.tlv.BerTlv
 import com.payneteasy.tlv.BerTlvBuilder
+import stone.ton.tapreader.utils.General.Companion.decodeHex
 
 class TlvDatabase {
 
@@ -27,6 +28,10 @@ class TlvDatabase {
 
     fun getTlv(tag: ByteArray): TlvDatabaseEntry? {
         return getTlv(BerTag(tag))
+    }
+
+    fun getTlv(tag: String): TlvDatabaseEntry? {
+        return getTlv(tag.decodeHex())
     }
 
     fun getLength(tag: BerTag): Int? {
