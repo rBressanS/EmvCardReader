@@ -39,10 +39,6 @@ object ProcessSignalQueue {
         }
     }
 
-    suspend fun addToQueueAndAwait(processSignal: IProcessSignal) {
-        myQueue.send(processSignal)
-    }
-
     fun addToQueue(processSignal: IProcessSignal) {
         logger.info("Adding Signal to Queue: ${processSignal.getMessage()}")
         scope.launch {

@@ -1,6 +1,5 @@
 package stone.ton.tapreader.utils
 
-import androidx.compose.runtime.rememberUpdatedState
 import com.payneteasy.tlv.BerTlv
 import kotlin.experimental.and
 import kotlin.experimental.or

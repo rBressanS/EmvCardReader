@@ -3,7 +3,6 @@ package stone.ton.tapreader.models.kernel
 import com.payneteasy.tlv.BerTag
 import com.payneteasy.tlv.BerTlv
 import com.payneteasy.tlv.BerTlvBuilder
-import stone.ton.tapreader.utils.General.Companion.toHex
 
 class TlvDatabase {
 
@@ -51,7 +50,6 @@ class TlvDatabase {
 
 
     fun parseAndStoreCardResponse(tlv: BerTlv) {
-        println("parseAndStoreCardResponse: ${tlv.tag.bytes.toHex()}")
         if (tlv.isConstructed) {
             val tagList = tlv.values
             for (tag in tagList) {

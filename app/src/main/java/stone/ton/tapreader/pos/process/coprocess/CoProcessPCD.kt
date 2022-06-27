@@ -2,7 +2,6 @@ package stone.ton.tapreader.pos.process.coprocess
 
 import android.nfc.NfcAdapter
 import android.nfc.tech.IsoDep
-import com.payneteasy.tlv.BerTlvParser
 import stone.ton.tapreader.interfaces.ICardConnection
 import stone.ton.tapreader.interfaces.ICardPoller
 import stone.ton.tapreader.interfaces.IProcess
@@ -19,11 +18,9 @@ object CoProcessPCD : IProcess {
 
     private val logger: Logger = Logger.getLogger(this.javaClass.name)
 
-    private val parser = BerTlvParser()
-
     lateinit var cardPoller: ICardPoller
 
-    private lateinit var cardConnection: ICardConnection
+    lateinit var cardConnection: ICardConnection
 
     private fun startPolling(cardPoller: ICardPoller) {
         logger.info("startPolling")

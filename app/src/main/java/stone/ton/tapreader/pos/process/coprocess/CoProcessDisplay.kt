@@ -13,7 +13,7 @@ object CoProcessDisplay : IProcess {
     //TODO implement dataset for each language
 
     private var processDisplayConfigData = ProcessDisplayConfigData(
-        UserInterfaceRequestData.Companion.LanguagePreference.PT_BR,
+        UserInterfaceRequestData.LanguagePreference.PT,
         "R$", 2
     )
 
@@ -31,7 +31,7 @@ object CoProcessDisplay : IProcess {
 
 
     data class ProcessDisplayConfigData(
-        val defaultLanguage: UserInterfaceRequestData.Companion.LanguagePreference,
+        val defaultLanguage: UserInterfaceRequestData.LanguagePreference,
         val currencySymbol: String, val minorUnitsForCurrency: Int
     )
 

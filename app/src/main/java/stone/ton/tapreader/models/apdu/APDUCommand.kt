@@ -1,5 +1,6 @@
 package stone.ton.tapreader.models.apdu
 
+import stone.ton.tapreader.pos.process.coprocess.CoProcessKernelC2
 import stone.ton.tapreader.utils.General.Companion.decodeHex
 import kotlin.experimental.or
 
@@ -74,18 +75,18 @@ class APDUCommand(
             )
         }
 
-        fun buildGenerateAc(acType:String, isCda:Boolean, cdolData: ByteArray): APDUCommand {
+        fun buildGenerateAc(acType:CoProcessKernelC2.ACType, isCda:Boolean, cdolData: ByteArray): APDUCommand {
             var p1:Byte = 0x00
             if(isCda){
                 p1 = p1.or(0b10000)
             }
-            if(acType == "AAC"){
+            if(acType == CoProcessKernelC2.ACType.AAC){
                 p1 = p1.or(0b0)
             }
-            if(acType == "TC"){
+            if(acType == CoProcessKernelC2.ACType.TC){
                 p1 = p1.or(0b1000000)
             }
-            if(acType == "ARQC"){
+            if(acType == CoProcessKernelC2.ACType.ARQC){
                 p1 = p1.or(0b10000000.toByte())
             }
 

@@ -41,8 +41,6 @@ class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
     private fun addToApduTrace(tag: String, chars: CharSequence) {
         val newText = apduTrace.text.toString() + "\n" + tag + ":" + chars
         apduTrace.text = newText
-        //val editable: Editable = apduTrace.editableText
-        //Selection.setSelection(editable, editable.length)
     }
 
     private var onResumeCallback: (() -> Unit)? = null
@@ -69,24 +67,12 @@ class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
     override fun startCardPolling(readerCallback: NfcAdapter.ReaderCallback) {
 
         Log.i("ReadActivity", "StartCardPolling")
-        /*val intent = Intent(this, javaClass).apply {
-            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        }
-        val nfcintent =
-            PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE)
-
-        val intentFiltersArray = arrayOf(IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED))*/
 
         val nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         val extra = Bundle()
         extra.putInt(NfcAdapter.EXTRA_READER_PRESENCE_CHECK_DELAY, 1000)
         this.onResumeCallback = {
-            /*nfcAdapter.enableForegroundDispatch(
-                this,
-                nfcintent,
-                intentFiltersArray,
-                arrayOf(arrayOf<String>(IsoDep::class.java.name))
-            )*/
+
             nfcAdapter.enableReaderMode(
                 this,
                 readerCallback,
@@ -95,7 +81,6 @@ class ReadActivity : AppCompatActivity(), ICardPoller, IUIProcessor {
             )
         }
         this.onPauseCallback = {
-            //nfcAdapter.disableForegroundDispatch(this)
             nfcAdapter.disableReaderMode(this)
         }
 

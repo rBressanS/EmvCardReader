@@ -6,6 +6,7 @@ import com.payneteasy.tlv.BerTlv
 import com.payneteasy.tlv.BerTlvBuilder
 import stone.ton.tapreader.interfaces.IProcess
 import stone.ton.tapreader.interfaces.IProcessSignal
+import stone.ton.tapreader.models.emv.MessageIdentifier
 import stone.ton.tapreader.models.pos.ProcessSignal
 import stone.ton.tapreader.pos.process.ProcessSignalQueue
 import stone.ton.tapreader.pos.process.coprocess.CoProcessPCD.cardPoller
@@ -22,9 +23,9 @@ object CoProcessMain : IProcess {
     //TODO Stopped at EMV Kernel C8 - 2.2.5
     // 4 Step
 
-    var amount = 0
+    private var amount = 0
     private var paymentType = ""
-    private val languagePreference = UserInterfaceRequestData.Companion.LanguagePreference.PT_BR
+    private val languagePreference = UserInterfaceRequestData.LanguagePreference.PT
 
     fun startTransaction(amount: Int, paymentType: String) {
         Log.i("ProcessMain", "startTransaction")
@@ -36,11 +37,11 @@ object CoProcessMain : IProcess {
         ProcessSignalQueue.addToQueue(
             CoProcessDisplay.buildSignalForMsg(
                 this, UserInterfaceRequestData(
-                    UserInterfaceRequestData.Companion.MessageIdentifier.PRESENT_CARD,
-                    UserInterfaceRequestData.Companion.Status.READY_TO_READ,
+                    MessageIdentifier.PRESENT_CARD,
+                    UserInterfaceRequestData.Status.READY_TO_READ,
                     0,
                     languagePreference,
-                    UserInterfaceRequestData.Companion.ValueQualifier.AMOUNT,
+                    UserInterfaceRequestData.ValueQualifier.AMOUNT,
                     amount,
                     76
                 )

@@ -31,6 +31,6 @@ class Pos(readActivity: ReadActivity, cardPoller: ICardPoller, uiProcessor: IUIP
         return DataSets.kernels
     }
 
-    val reader: Reader = Reader(readActivity, kernels, terminalTags, cardPoller, uiProcessor)
+    val reader: Reader = Reader(cardPoller, uiProcessor)
 
 }
