@@ -55,6 +55,7 @@ class CoProcessKernelC2 {
     private var rrpCounter = 0
     private var terminalCapabilities = TerminalCapabilities()
     private var discretionaryData = DiscretionaryData(ArrayList())
+    private var dataRecord = DataRecord(ArrayList())
     private var tvr = ByteArray(5)
     private var noCdaOptimisation = false
 
@@ -74,6 +75,37 @@ class CoProcessKernelC2 {
         "9F33",
         "9F34",
         "DF8116",
+    )
+
+    private val dataRecordElements = listOf(
+        "9F02", // Amount
+        "9F03", // Amount, Other
+        "9F26", // Application cryptogram
+        "5f24", // Application expiration
+        "82", // AIP
+        "50", // App label
+        "5A", // App pan
+        "5f34", // App pan SEQ
+        "9f12", // App prefered name
+        "9f36", // App transaction counter
+        "9f07", // AUC
+        "9f09", // APP VERSION NUMBER (READER)
+        "9f27", // CID
+        "9f34", // CVM Results
+        "84", // df name
+        "9f1e", // idsn
+        "9f10", // Issuer application data
+        "9f11", // issuer code table index
+        "9f24", // PAR
+        "9f33", // terminal capabilities
+        "9f1a", // terminal country code
+        "9f35", // terminal type
+        "95", // terminal verification results
+        "57", // track 2 equivalent data
+        "9f53", // transaction category code
+        "5f2a", // transaction currency code
+        "9a", // transaction date
+        "9c", // transaction type
     )
 
     private fun syncData(startProcessPayload: StartProcessPayload) {
@@ -106,6 +138,14 @@ class CoProcessKernelC2 {
         }
     }
 
+    private fun initializeDataRecord() {
+        for (tag in dataRecordElements) {
+            kernelDatabase.runIfExists(tag.decodeHex()) {
+                dataRecord.add(it.fullTag)
+            }
+        }
+    }
+
     private fun buildOutSignal(): OutSignal {
         kernelDatabase.add(
             BerTlvBuilder().addBytes(BerTag("DF8115".decodeHex()), errorIndication).buildTlv()
@@ -119,9 +159,14 @@ class CoProcessKernelC2 {
         kernelDatabase.add(
             BerTlvBuilder().addBytes(BerTag("9F34".decodeHex()), cvmResult).buildTlv()
         )
-        initializeDiscretionaryData()
+        if(outcomeParameter.dataRecordPresent){
+            initializeDataRecord()
+        }
+        if(outcomeParameter.discretionaryDataPresent){
+            initializeDiscretionaryData()
+        }
         outcomeParameter.errorIndication = errorIndication
-        return OutSignal(outcomeParameter, null, DataRecord(), discretionaryData)
+        return OutSignal(outcomeParameter, null, dataRecord, discretionaryData)
     }
 
     private fun addTagToDatabase(tag: String, value: String) {
@@ -1194,17 +1239,24 @@ class CoProcessKernelC2 {
         val onlineResponseData: Int = 0,
         var CVM: Int = 0,
         var uiRequestOnOutcomePresent: Boolean = false,
-        var uiRequestOnRestartPresent: Boolean = false,
-        var dataRecordPresent: Boolean = false,
-        val didescretionaryDataPresent: Boolean = false,
+        val uiRequestOnRestartPresent: Boolean = false,
+        val dataRecordPresent: Boolean = false,
+        val discretionaryDataPresent: Boolean = false,
         var receipt: Boolean = false,
         val alternateInterfacePreference: Int = 0,
         var fieldOffRequest: Int = 0,
-        val removalTimeount: Int = 0,
+        val removalTimeout: Int = 0,
         var errorIndication: ByteArray = ByteArray(0)
     )
 
-    class DataRecord
+    class DataRecord(var data: MutableList<BerTlv>) {
+        fun add(tag: BerTlv) {
+            data.add(tag)
+        }
+        override fun toString(): String {
+            return data.joinToString { it.getFullAsByteArray().toHex() }
+        }
+    }
 
     class DiscretionaryData(var data: MutableList<BerTlv>) {
         fun add(tag: BerTlv) {
