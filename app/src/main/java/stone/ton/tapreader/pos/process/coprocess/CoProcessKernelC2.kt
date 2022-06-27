@@ -453,6 +453,8 @@ class CoProcessKernelC2 {
             tvr.setBitOfByte(7, 0) // Offline data authentication was not performed
         }
 
+        var cdol: BerTlv?
+
         val aflEntries = activeAfl.toList().chunked(4)
         for (data in aflEntries) {
             val aflEntry = AFLEntry(data.toByteArray())
@@ -467,8 +469,8 @@ class CoProcessKernelC2 {
                     userInterfaceRequestData.messageIdentifier =MessageIdentifier.PRESENT_CARD_AGAIN
                     userInterfaceRequestData.status =UserInterfaceRequestData.Status.READY_TO_READ
                     userInterfaceRequestData.holdTime = 0
-                    
-                    
+
+
                     outcomeParameter.status =OutcomeParameter.Status.END_APPLICATION
                     outcomeParameter.start =OutcomeParameter.Start.B
                     errorIndication.l1 = ErrorIndication.L1.TRANSMISSION_ERROR
@@ -543,11 +545,8 @@ class CoProcessKernelC2 {
             }
         }
 
-        var checkpoint = 1
-        println("Checkpoint: ${checkpoint++}")
         val amountAuthorized = kernelDatabase.getTlv("9F02".decodeHex())?.fullTag?.intValue
             ?: return buildOutSignal() // TODO corrigir page 253 456.13
-        println("Checkpoint: ${checkpoint++}")
         if (amountAuthorized > readerContactlessTransactionLimit) {
             return buildOutSignal() // TODO corrigir page 253 456.15
         }
@@ -555,7 +554,6 @@ class CoProcessKernelC2 {
                     kernelDatabase.isPresent("5A".decodeHex()) && // TRACK2 EQUIVALENT DATA
                     kernelDatabase.isPresent("8C".decodeHex()))
         ) {
-            println("Checkpoint: ${checkpoint++}")
             return buildOutSignal() // TODO corrigir page 254 456.17
         }
 
@@ -571,7 +569,6 @@ class CoProcessKernelC2 {
             }
             val sdaTag = kernelDatabase.getTlv(BerTag(0x9F, 0x4A))
             if (!(sdaTag != null && sdaTag.fullTag.intValue == 0x82)) {
-                println("Checkpoint: ${checkpoint++}")
                 return buildOutSignal() // TODO corrigir 257 456.27.1
             }
             if (signedData.length < 2048 * 2) {
@@ -619,7 +616,7 @@ class CoProcessKernelC2 {
         println(acType)
 
         val genAcCommand: APDUCommand
-        var cdol: BerTlv? = kernelDatabase.getTlv("8C".decodeHex())?.fullTag
+        cdol = kernelDatabase.getTlv("8C".decodeHex())?.fullTag
 
         val cdolData = buildDolValue(cdol, false)
         //val cdolData = "8342000000000100000000000000082600000000000826190819003357A30A21000000000000000000001F03021205050000000000000000000000000000000000000000".decodeHex()
@@ -652,13 +649,12 @@ class CoProcessKernelC2 {
             userInterfaceRequestData.messageIdentifier =MessageIdentifier.PRESENT_CARD_AGAIN
             userInterfaceRequestData.status =UserInterfaceRequestData.Status.READY_TO_READ
             userInterfaceRequestData.holdTime = 0
-            
-            
+
+
             outcomeParameter.status =OutcomeParameter.Status.END_APPLICATION
             outcomeParameter.start =OutcomeParameter.Start.B
             errorIndication.l1 = ErrorIndication.L1.TRANSMISSION_ERROR
             errorIndication.msgOnError = MessageIdentifier.PRESENT_CARD_AGAIN
-            println("Checkpoint: ${checkpoint++}")
             return buildOutSignal()
         }
         if (!genAcResponse.wasSuccessful()) {
@@ -669,15 +665,208 @@ class CoProcessKernelC2 {
             errorIndication.l2 = ErrorIndication.L2.STATUS_BYTES
             errorIndication.sw1 = genAcResponse.sw1
             errorIndication.sw2 = genAcResponse.sw2
-            println("Checkpoint: ${checkpoint++}")
+
             return buildOutSignal()
         }
 
 
-        //Start S12
+        if(!genAcResponse.getParsedData().isEmpty() && genAcResponse.getParsedData().tag == BerTag(
+                0x77
+            )){
+            kernelDatabase.parseAndStoreCardResponse(genAcResponse.getParsedData())
+        }else{
+            if(!genAcResponse.getParsedData().isEmpty() && genAcResponse.getParsedData().tag == BerTag(
+                    0x80
+                )){
+                val responseMessageDataField = genAcResponse.getParsedData().bytesValue
+                val parseNOK = responseMessageDataField.size < 11 ||
+                        responseMessageDataField.size > 43 ||
+                        kernelDatabase.isPresent("9F27".decodeHex()) ||
+                        kernelDatabase.isPresent("9F36".decodeHex()) ||
+                        kernelDatabase.isPresent("9F26".decodeHex()) ||
+                        (responseMessageDataField.size >11 && kernelDatabase.isPresent("9F10".decodeHex()))
+                if(parseNOK){
+                    return buildOutSignal()
+                }
+                kernelDatabase.add(BerTlvBuilder().addBytes(
+                    BerTag("9F27".decodeHex()),
+                    byteArrayOf(responseMessageDataField[0])
+                ).buildTlv())
+                kernelDatabase.add(BerTlvBuilder().addBytes(
+                    BerTag("9F36".decodeHex()),
+                    responseMessageDataField.copyOfRange(1,3)
+                ).buildTlv())
+                kernelDatabase.add(BerTlvBuilder().addBytes(
+                    BerTag("9F26".decodeHex()),
+                    responseMessageDataField.copyOfRange(3,11)
+                ).buildTlv())
+                if(responseMessageDataField.size > 11){
+                    kernelDatabase.add(BerTlvBuilder().addBytes(
+                        BerTag("9F10".decodeHex()),
+                        responseMessageDataField.copyOfRange(11, responseMessageDataField.size)
+                    ).buildTlv())
+                }
+            }
+        }
 
+        if(!kernelDatabase.isPresent("9F27".decodeHex()) || !kernelDatabase.isPresent("9F36".decodeHex())){
+            return buildOutSignal()
+        }
+        val cid = kernelDatabase.getTlv("9F27".decodeHex())!!.fullTag
+        val shouldContinue = (cid.bytesValue[0].and(0xC0.toByte()) == 0x40.toByte()) ||
+                (cid.bytesValue[0].and(0xC0.toByte()) == 0x80.toByte() && (acType == ACType.TC||acType==ACType.ARQC)) ||
+                (cid.bytesValue[0].and(0xC0.toByte()) == 0x00.toByte())
+        if(!shouldContinue){
+            return buildOutSignal()
+        }
+        userInterfaceRequestData.messageIdentifier = MessageIdentifier.NO_MESSAGE// 0b11110 //MID = clear display
+        userInterfaceRequestData.status = UserInterfaceRequestData.Status.CARD_READ_SUCCESSFULLY//0b100 // status = card read successfully
+        userInterfaceRequestData.holdTime = 0b0 // Hold time = 0
 
-        println("Checkpoint: ${checkpoint++}")
+        if(kernelDatabase.isPresent("9F4B".decodeHex())){
+            //S910.1
+            val caPkIndex = kernelDatabase.getTlv(BerTag(0x8F))!!.fullTag.hexValue!!
+            val rid = "A000000004"
+            val caPk = DataSets.caPublicKeys.find { it.index == caPkIndex && it.rId == rid }
+                ?: return buildOutSignal()
+            //Perform CDA
+            val ICCPKOk = true
+            if(!ICCPKOk){
+                tvr.setBitOfByte(2, 0) // CDA Failed
+                return buildOutSignal()
+            }
+            val rrpPerformed = tvr.isBitSetOfByte(1,4) || !tvr.isBitSetOfByte(0,4)
+            if(rrpPerformed){
+                //S910.4.1
+                //TODO Verify SDAD EMV Book2 Section 6.6
+                val iccDynamicData = ByteArray(45)
+                val iccDynamicNumberLength = iccDynamicData[0]
+                if(iccDynamicData.size < (44 + iccDynamicNumberLength)){
+                    tvr.setBitOfByte(2, 0) // CDA Failed
+                    return buildOutSignal()
+                }
+                val iccDynamicNumber = iccDynamicData.copyOfRange(1,1+iccDynamicNumberLength)
+                val applicationCryptogram = iccDynamicData.copyOfRange(2+iccDynamicNumberLength,10+iccDynamicNumberLength)
+                kernelDatabase.add(BerTlvBuilder().addBytes(
+                    BerTag("9F4C".decodeHex()),
+                    iccDynamicNumber
+                ).buildTlv())
+                kernelDatabase.add(BerTlvBuilder().addBytes(
+                    BerTag("9F26".decodeHex()),
+                    applicationCryptogram
+                ).buildTlv())
+
+                val terminalRelayResistanceEntropy = kernelDatabase.getTlv("DF8301".decodeHex())!!.fullTag.bytesValue
+                val deviceRelayResistanceEntropy = kernelDatabase.getTlv("DF8302".decodeHex())!!.fullTag.bytesValue
+                val minTimeForProcessingApdu = kernelDatabase.getTlv("DF8303".decodeHex())!!.fullTag.bytesValue
+                val maxTimeForProcessingApdu = kernelDatabase.getTlv("DF8304".decodeHex())!!.fullTag.bytesValue
+                val deviceEstimatedTimeForResponse = kernelDatabase.getTlv("DF8305".decodeHex())!!.fullTag.bytesValue
+
+                val cdaTerminalRelayResistanceEntropy = iccDynamicData.copyOfRange(30+iccDynamicNumberLength,30+iccDynamicNumberLength+4)
+                val cdaDeviceRelayResistanceEntropy = iccDynamicData.copyOfRange(34+iccDynamicNumberLength,34+iccDynamicNumberLength+4)
+                val cdaMinTimeForProcessingApdu = iccDynamicData.copyOfRange(38+iccDynamicNumberLength,38+iccDynamicNumberLength+2)
+                val cdaMaxTimeForProcessingApdu = iccDynamicData.copyOfRange(40+iccDynamicNumberLength,40+iccDynamicNumberLength+2)
+                val cdaDeviceEstimatedTimeForResponse = iccDynamicData.copyOfRange(42+iccDynamicNumberLength,42+iccDynamicNumberLength+2)
+                if(!terminalRelayResistanceEntropy.contentEquals(cdaTerminalRelayResistanceEntropy) ||
+                    !deviceRelayResistanceEntropy.contentEquals(cdaDeviceRelayResistanceEntropy) ||
+                    !minTimeForProcessingApdu.contentEquals(cdaMinTimeForProcessingApdu) ||
+                    !maxTimeForProcessingApdu.contentEquals(cdaMaxTimeForProcessingApdu) ||
+                    !deviceEstimatedTimeForResponse.contentEquals(cdaDeviceEstimatedTimeForResponse) ){
+                    tvr.setBitOfByte(2, 0) // CDA Failed
+                    return buildOutSignal()
+                }
+            }else{
+                //S910.4.0
+                //TODO Verify SDAD EMV Book2 Section 6.6
+                val iccDynamicData = ByteArray(30)
+                val iccDynamicNumberLength = iccDynamicData[0]
+                if(iccDynamicData.size < (30 + iccDynamicNumberLength)){
+                    tvr.setBitOfByte(2, 0) // CDA Failed
+                    return buildOutSignal()
+                }
+                val iccDynamicNumber = iccDynamicData.copyOfRange(1,1+iccDynamicNumberLength)
+                val applicationCryptogram = iccDynamicData.copyOfRange(2+iccDynamicNumberLength,10+iccDynamicNumberLength)
+                kernelDatabase.add(BerTlvBuilder().addBytes(
+                    BerTag("9F4C".decodeHex()),
+                    iccDynamicNumber
+                ).buildTlv())
+                kernelDatabase.add(BerTlvBuilder().addBytes(
+                    BerTag("9F26".decodeHex()),
+                    applicationCryptogram
+                ).buildTlv())
+            }
+        }else{
+            //S910.30
+            val applicationCryptogram = kernelDatabase.getTlv("9F26".decodeHex())?.fullTag
+            if(applicationCryptogram == null){
+                tvr.setBitOfByte(2, 0) // CDA Failed
+                return buildOutSignal()
+            }
+            if(applicationCryptogram.bytesValue[0].and(0xC0.toByte()) != 0x00.toByte()){
+                //34
+                if(shouldRequestCda){
+                    tvr.setBitOfByte(2, 0) // CDA Failed
+                    return buildOutSignal()
+                }
+                val rrpPerformed = tvr.isBitSetOfByte(1,4) || !tvr.isBitSetOfByte(0,4)
+                if(rrpPerformed){
+                    //TODO S910.39
+                }
+
+            }
+        }
+        outcomeParameter.dataRecordPresent = true
+        val PCII = kernelDatabase.getTlv("DF4B".decodeHex())?.fullTag?.bytesValue
+        if(PCII!=null && !PCII.and(byteArrayOf(0x00,0x03,0x0F)).contentEquals(ByteArray(3))){
+            //S72
+            outcomeParameter.status = OutcomeParameter.Status.END_APPLICATION //0b100 // END_APPLICATION
+            outcomeParameter.start = OutcomeParameter.Start.B//0b1 // B
+            val phoneMessageTable = kernelDatabase.getTlv("DF8131".decodeHex())!!.fullTag.bytesValue
+            for(phoneMessageEntry in phoneMessageTable.toList().chunked(8)){
+                val pciiMask = phoneMessageEntry.subList(0,3).toByteArray()
+                val pciiValue = phoneMessageEntry.subList(3,6).toByteArray()
+                val messageId = phoneMessageEntry.subList(6,7).toByteArray()
+                val status = phoneMessageEntry.subList(7,8).toByteArray()
+                if(pciiMask.and(PCII).contentEquals(pciiValue)){
+                    userInterfaceRequestData.messageIdentifier = MessageIdentifier.from(messageId[0])
+                    userInterfaceRequestData.status = UserInterfaceRequestData.Status.from(status[0])
+                    userInterfaceRequestData.holdTime = 0x0
+                    break
+                }
+            }
+        }else{
+            //S74
+            if(cid.bytesValue[0].and(0xC0.toByte()) == 0x40.toByte()){
+                outcomeParameter.status = OutcomeParameter.Status.APPROVED // 0b1 // APPROVED
+            }else{
+                if(cid.bytesValue[0].and(0xC0.toByte()) == 0x80.toByte()){
+                    outcomeParameter.status = OutcomeParameter.Status.ONLINE_REQUEST // 0b11 // Online Request
+                }else{
+                    outcomeParameter.status = OutcomeParameter.Status.DECLINED // 0b10 // Declined
+                }
+            }
+            userInterfaceRequestData.status = UserInterfaceRequestData.Status.NOT_READY // 0x0 // NOT READY
+            if(cid.bytesValue[0].and(0xC0.toByte()) == 0x40.toByte()){
+                if(outcomeParameter.CVM == OutcomeParameter.Cvm.OBTAIN_SIGNATURE){
+                    userInterfaceRequestData.messageIdentifier = MessageIdentifier.APPROVED_SIGN//0b11010 // APProved_sign
+                }else{
+                    userInterfaceRequestData.messageIdentifier = MessageIdentifier.APPROVED // 0b11 // APProved_sign
+                }
+            }else{
+                if(cid.bytesValue[0].and(0xC0.toByte()) == 0x80.toByte()){
+                    userInterfaceRequestData.messageIdentifier = MessageIdentifier.AUTHORISING_PLEASE_WAIT // 0b11011 // authorising_wait
+                }else{
+                    userInterfaceRequestData.messageIdentifier = MessageIdentifier.NOT_AUTHORIZED//0b111 // authorising_wait
+                }
+            }
+        }
+        if(PCII!=null && !PCII.and(byteArrayOf(0x00,0x03,0x0F)).contentEquals(ByteArray(3))){
+            outcomeParameter.uiRequestOnRestartPresent = true
+
+        }else{
+            outcomeParameter.uiRequestOnOutcomePresent = true
+        }
+        //Generate ARQC
         return buildOutSignal()
     }
 
@@ -774,7 +963,6 @@ class CoProcessKernelC2 {
             if (cvCondition != null) {
                 //TODO implement should Apply
                 val shouldApplyCondition = shouldApplyCondition(
-                    cvCode,
                     cvCondition,
                     xAmount,
                     yAmount,
@@ -791,7 +979,7 @@ class CoProcessKernelC2 {
                         outcomeParameter.CVM = OutcomeParameter.Cvm.NO_CVM
                         tvr.setBitOfByte(7, 2) // Cardholder verification was not successful
                         if (cvmCode == CvmResults.CvmCode.FAIL_CVM) {
-                            cvmResult.cvmPerformed = CvmResults.CvmCode.FAIL_CVM
+                            cvmResult.cvmPerformed = CvmResults.CvmCode.from(cvRule[0])!!
                             cvmResult.cvmCondition = CvmResults.CvmCondition.from(cvRule[1])!!
                             cvmResult.cvmResult = CvmResults.CvmResult.FAILED
                         } else {
@@ -854,7 +1042,6 @@ class CoProcessKernelC2 {
     }
 
     private fun shouldApplyCondition(
-        cvCode: Byte,
         condition: CvmResults.CvmCondition,
         xValue: Int,
         yValue: Int,
@@ -862,9 +1049,6 @@ class CoProcessKernelC2 {
         transactionType: String?
     ): Boolean {
         //TODO implement
-        if(cvCode == 0x5e.toByte()){
-            return false
-        }
         return true
     }
 
@@ -1021,8 +1205,8 @@ class CoProcessKernelC2 {
         val onlineResponseData: Int = 0,
         var CVM: Cvm = Cvm.N_A,
         var uiRequestOnOutcomePresent: Boolean = false,
-        val uiRequestOnRestartPresent: Boolean = false,
-        val dataRecordPresent: Boolean = false,
+        var uiRequestOnRestartPresent: Boolean = false,
+        var dataRecordPresent: Boolean = false,
         val discretionaryDataPresent: Boolean = false,
         var receipt: Boolean = false,
         val alternateInterfacePreference: Int = 0,
@@ -1201,7 +1385,7 @@ class CoProcessKernelC2 {
                 fun from(findValue: Byte): CvmResult = values().first { it.value == findValue }
             }
         }
-        
+
         override fun toByteArray(): ByteArray {
             return byteArrayOf(cvmPerformed.value, cvmCondition.value, cvmResult.value)
         }
