@@ -1239,7 +1239,7 @@ class CoProcessKernelC2 {
 
     private fun validateAtmUsage(): Boolean {
         val appUsageControl =
-            kernelDatabase.getTlv("9F07")?.fullTag?.bytesValue ?: return
+            kernelDatabase.getTlv("9F07")?.fullTag?.bytesValue ?: return false
         val terminalType = kernelDatabase.getTlv("9F35")!!.fullTag.hexValue
         val additionalTerminalCapabilities =
             kernelDatabase.getTlv("9F40")!!.fullTag.bytesValue
