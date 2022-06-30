@@ -103,7 +103,7 @@ class CoProcessKernelC2 {
         "5f2a", // transaction currency code
         "9a", // transaction date
         "9c", // transaction type
-    )
+    ).sorted()
 
     private fun syncData(startProcessPayload: StartProcessPayload) {
         for (t in startProcessPayload.syncData) {
@@ -1090,6 +1090,7 @@ class CoProcessKernelC2 {
             val cvCondition = CvmResults.CvmCondition.from(cvRule[1])
             val cvCode = cvRule[0]
             val cvRuleShouldContinue = cvCode.isBitSet(6)
+            cvmResult.shouldApplyNext = cvRuleShouldContinue
             val cvmCode = CvmResults.CvmCode.from(cvCode.and(0b00111111))
             if (cvCondition != null) {
                 val conditionSatisfied = shouldApplyCondition(
@@ -1113,7 +1114,8 @@ class CoProcessKernelC2 {
                         outcomeParameter.cvm = OutcomeParameter.Cvm.NO_CVM
                         tvr.cardholderVerificationWasNotSuccessful = true
                         if (cvmCode == CvmResults.CvmCode.FAIL_CVM) {
-                            cvmResult.cvmPerformed = CvmResults.CvmCode.from(cvRule[0])!!
+                            cvmResult.shouldApplyNext = cvRuleShouldContinue
+                            cvmResult.cvmPerformed = CvmResults.CvmCode.from(cvmCode)!!
                             cvmResult.cvmCondition = CvmResults.CvmCondition.from(cvRule[1])!!
                             cvmResult.cvmResult = CvmResults.CvmResult.FAILED
                         } else {
@@ -1127,7 +1129,7 @@ class CoProcessKernelC2 {
                     val isCvmCodeSupported = terminalCapabilities.supportsCvmCode(cvmCode)
                     if (isCvmCodeSupported && cvmCode.value.and(0x3F.toByte()) != 0.toByte()) {
                         //CVM.18
-                        cvmResult.cvmPerformed = CvmResults.CvmCode.from(cvRule[0])!!
+                        cvmResult.cvmPerformed = CvmResults.CvmCode.from(cvRule[0].and(0b111111))!!
                         cvmResult.cvmCondition = CvmResults.CvmCondition.from(cvRule[1])!!
                         if (cvmCode == CvmResults.CvmCode.ENCIPHERED_ONLINE_PIN) {
                             outcomeParameter.cvm = OutcomeParameter.Cvm.ONLINE_PIN
@@ -1517,6 +1519,7 @@ class CoProcessKernelC2 {
     }
 
     data class CvmResults(
+        var shouldApplyNext:Boolean = false,
         var cvmPerformed: CvmCode = CvmCode.FAIL_CVM,
         var cvmCondition: CvmCondition = CvmCondition.ALWAYS,
         var cvmResult: CvmResult = CvmResult.UNKNOWN,
@@ -1567,6 +1570,9 @@ class CoProcessKernelC2 {
         }
 
         override fun toByteArray(): ByteArray {
+            if(shouldApplyNext){
+                return byteArrayOf(cvmPerformed.value.or(0b1000000), cvmCondition.value, cvmResult.value)
+            }
             return byteArrayOf(cvmPerformed.value, cvmCondition.value, cvmResult.value)
         }
     }

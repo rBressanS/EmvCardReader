@@ -11,8 +11,10 @@ import stone.ton.tapreader.models.pos.ProcessSignal
 import stone.ton.tapreader.pos.process.ProcessSignalQueue
 import stone.ton.tapreader.pos.process.coprocess.CoProcessPCD.cardPoller
 import stone.ton.tapreader.pos.process.process_d.UserInterfaceRequestData
+import stone.ton.tapreader.utils.BerTlvExtension.Companion.getFullAsByteArray
 import stone.ton.tapreader.utils.DataSets
 import stone.ton.tapreader.utils.General.Companion.decodeHex
+import stone.ton.tapreader.utils.General.Companion.toHex
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -119,7 +121,18 @@ object CoProcessMain : IProcess {
                             syncDataList
                         )
                         val result = kernel2.start(startProcessPayload)
+                        if(result.outcomeParameter.uiRequestOnOutcomePresent && result.userInterfaceRequestData != null){
+                            ProcessSignalQueue.addToQueue(
+                                CoProcessDisplay.buildSignalForMsg(
+                                    this, result.userInterfaceRequestData)
+                            )
+                        }
                         println(result)
+                        var authorizationData = ""
+                        for (i in result.dataRecord.data){
+                            authorizationData += i.getFullAsByteArray().toHex()
+                        }
+                        println(authorizationData)
 
                         //CoProcessKernelC2.kernelData = kernelData
                         //CoProcessKernelC2.start(response.fciResponse)
