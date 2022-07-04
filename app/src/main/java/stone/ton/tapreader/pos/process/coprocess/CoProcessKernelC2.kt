@@ -218,12 +218,26 @@ class CoProcessKernelC2 {
         )
     }
 
-    private fun processErrorInGpo(): OutSignal {
-        userInterfaceRequestData.messageIdentifier = MessageIdentifier.TRY_ANOTHER_CARD
-        userInterfaceRequestData.status = UserInterfaceRequestData.Status.NOT_READY
+    private fun buildOutSignalForParsingError() :OutSignal{
+
+    }
+
+    private fun buildOutSignalForCardDataMissing():OutSignal{
+
+    }
+
+    private fun buildOutSignalForTransmissionError():OutSignal{
         outcomeParameter.status = OutcomeParameter.Status.END_APPLICATION
+        outcomeParameter.start = OutcomeParameter.Start.B
         outcomeParameter.uiRequestOnOutcomePresent = true
-        errorIndication.msgOnError = MessageIdentifier.TRY_ANOTHER_CARD
+        errorIndication.l1 = ErrorIndication.L1.TRANSMISSION_ERROR
+        errorIndication.msgOnError = MessageIdentifier.TRY_AGAIN
+        return buildOutSignal()
+    }
+
+    private fun processErrorInGpo(): OutSignal {
+        outcomeParameter.status = OutcomeParameter.Status.SELECT_NEXT
+        outcomeParameter.start = OutcomeParameter.Start.C
         return buildOutSignal()
     }
 
@@ -270,15 +284,13 @@ class CoProcessKernelC2 {
                 }
                 if (!kernelDatabase.isPresent("94".decodeHex()) || !kernelDatabase.isPresent("82".decodeHex())) {
                     errorIndication.l2 = ErrorIndication.L2.CARD_DATA_MISSING
+
                     return processErrorInGpo()
                 }
 
             }
         } catch (e: IOException) {
-            outcomeParameter.status = OutcomeParameter.Status.TRY_AGAIN
-            outcomeParameter.start = OutcomeParameter.Start.B
-            errorIndication.l1 = ErrorIndication.L1.TRANSMISSION_ERROR
-            return buildOutSignal()
+            return buildOutSignalForTransmissionError()
         }
         return null
     }
@@ -369,7 +381,7 @@ class CoProcessKernelC2 {
             outcomeParameter.status = OutcomeParameter.Status.END_APPLICATION
             outcomeParameter.uiRequestOnOutcomePresent = true
             errorIndication.l2 = ErrorIndication.L2.PARSING_ERROR
-            errorIndication.msgOnError = MessageIdentifier.PRESENT_CARD_AGAIN
+            errorIndication.msgOnError = MessageIdentifier.TRY_AGAIN
             return buildOutSignal()
         }
         return null
@@ -423,7 +435,7 @@ class CoProcessKernelC2 {
                 outcomeParameter.status = OutcomeParameter.Status.END_APPLICATION
                 outcomeParameter.uiRequestOnOutcomePresent = true
                 errorIndication.l2 = ErrorIndication.L2.CARD_DATA_ERROR
-                errorIndication.msgOnError = MessageIdentifier.PRESENT_CARD_AGAIN
+                errorIndication.msgOnError = MessageIdentifier.TRY_AGAIN
                 return buildOutSignal()
             }
             val maxProcessingTime = max(0, deviceMaxTimeForProcessing + terminalMaxGracePeriod)
@@ -478,14 +490,14 @@ class CoProcessKernelC2 {
             rrpFailedAfterAttempts = true
             return null
         } catch (e: IOException) {
-            userInterfaceRequestData.messageIdentifier = MessageIdentifier.PRESENT_CARD_AGAIN
+            userInterfaceRequestData.messageIdentifier = MessageIdentifier.TRY_AGAIN
             userInterfaceRequestData.status = UserInterfaceRequestData.Status.READY_TO_READ
             userInterfaceRequestData.holdTime = 0
             outcomeParameter.status = OutcomeParameter.Status.END_APPLICATION
             outcomeParameter.start = OutcomeParameter.Start.B
             outcomeParameter.uiRequestOnOutcomePresent = true
             errorIndication.l1 = ErrorIndication.L1.TRANSMISSION_ERROR
-            errorIndication.msgOnError = MessageIdentifier.PRESENT_CARD_AGAIN
+            errorIndication.msgOnError = MessageIdentifier.TRY_AGAIN
             return buildOutSignal()
         }
     }
@@ -570,7 +582,7 @@ class CoProcessKernelC2 {
                     readRecordResponse = communicateWithCard(readRecord)
                 } catch (e: IOException) {
                     userInterfaceRequestData.messageIdentifier =
-                        MessageIdentifier.PRESENT_CARD_AGAIN
+                        MessageIdentifier.TRY_AGAIN
                     userInterfaceRequestData.status = UserInterfaceRequestData.Status.READY_TO_READ
                     userInterfaceRequestData.holdTime = 0
 
@@ -578,7 +590,7 @@ class CoProcessKernelC2 {
                     outcomeParameter.status = OutcomeParameter.Status.END_APPLICATION
                     outcomeParameter.start = OutcomeParameter.Start.B
                     errorIndication.l1 = ErrorIndication.L1.TRANSMISSION_ERROR
-                    errorIndication.msgOnError = MessageIdentifier.PRESENT_CARD_AGAIN
+                    errorIndication.msgOnError = MessageIdentifier.TRY_AGAIN
                     return buildOutSignal()
                 }
                 if (!readRecordResponse.wasSuccessful()) {
@@ -607,7 +619,7 @@ class CoProcessKernelC2 {
                         outcomeParameter.status = OutcomeParameter.Status.END_APPLICATION
                         outcomeParameter.uiRequestOnOutcomePresent = true
                         errorIndication.l2 = ErrorIndication.L2.PARSING_ERROR
-                        errorIndication.msgOnError = MessageIdentifier.PRESENT_CARD_AGAIN
+                        errorIndication.msgOnError = MessageIdentifier.TRY_AGAIN
                         return buildOutSignal()
                     }
                 }
@@ -751,7 +763,7 @@ class CoProcessKernelC2 {
             genAcResponse = communicateWithCard(genAcCommand)
         } catch (e: IOException) {
             //TODO
-            userInterfaceRequestData.messageIdentifier = MessageIdentifier.PRESENT_CARD_AGAIN
+            userInterfaceRequestData.messageIdentifier = MessageIdentifier.TRY_AGAIN
             userInterfaceRequestData.status = UserInterfaceRequestData.Status.READY_TO_READ
             userInterfaceRequestData.holdTime = 0
 
@@ -759,7 +771,7 @@ class CoProcessKernelC2 {
             outcomeParameter.status = OutcomeParameter.Status.END_APPLICATION
             outcomeParameter.start = OutcomeParameter.Start.B
             errorIndication.l1 = ErrorIndication.L1.TRANSMISSION_ERROR
-            errorIndication.msgOnError = MessageIdentifier.PRESENT_CARD_AGAIN
+            errorIndication.msgOnError = MessageIdentifier.TRY_AGAIN
             return buildOutSignal()
         }
         if (!genAcResponse.wasSuccessful()) {

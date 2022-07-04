@@ -19,7 +19,7 @@ enum class MessageIdentifier(val value: Byte) {
     INSERT_CARD(0X1D),
     NO_MESSAGE(0X1E),
     SEE_PHONE(0X20),
-    PRESENT_CARD_AGAIN(0X21);
+    TRY_AGAIN(0X21);
     companion object {
         fun from(findValue: Byte): MessageIdentifier = values().first { it.value == findValue }
     }
