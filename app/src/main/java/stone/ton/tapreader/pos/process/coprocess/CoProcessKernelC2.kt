@@ -60,6 +60,43 @@ class CoProcessKernelC2 {
     private var tvr = TerminalVerificationResult()//ByteArray(5)
     private var noCdaOptimisation = false
 
+    private val defaultTlvValues = mapOf(
+        "9f40" to "0000000000".decodeHex(),
+        "9f09" to "0002".decodeHex(),
+        "df8117" to "00".decodeHex(),
+        "df8118" to "00".decodeHex(),
+        "df8119" to "00".decodeHex(),
+        "df811a" to "9F6A04".decodeHex(),
+        "df8130" to "0D".decodeHex(),
+        "df811b" to "00".decodeHex(),
+        "df810c" to "02".decodeHex(),
+        "9f6d" to "0001".decodeHex(),
+        "df811e" to "F0".decodeHex(),
+        "df812c" to "F0".decodeHex(),
+        "df811c" to "012c".decodeHex(),
+        "df811d" to "00".decodeHex(),
+        "df812d" to "000013".decodeHex(),
+        "df8133" to "0032".decodeHex(),
+        "df8132" to "0014".decodeHex(),
+        "df8131" to "000001000001200000080000080020000004000004002000000100000100200000020000020020000000000000000700".decodeHex(),
+        "df8123" to "000000000000".decodeHex(),
+        "df8124" to "000000000000".decodeHex(),
+        "df8125" to "000000000000".decodeHex(),
+        "df8126" to "000000000000".decodeHex(),
+        "df8136" to "012c".decodeHex(),
+        "df8137" to "32".decodeHex(),
+        "df811f" to "00".decodeHex(),
+        "df8120" to "840000000C".decodeHex(),
+        "df8121" to "840000000C".decodeHex(),
+        "df8122" to "840000000C".decodeHex(),
+        "9f1a" to "0000".decodeHex(),
+        "df8134" to "0012".decodeHex(),
+        "df8135" to "0018".decodeHex(),
+        "9f35" to "00".decodeHex(),
+        "df8127" to "01f4".decodeHex(),
+        "9c" to "00".decodeHex(),
+    )
+
     private val discretionaryDataElements = listOf(
         "9F5D",
         "9F42",
@@ -106,6 +143,11 @@ class CoProcessKernelC2 {
     ).sorted()
 
     private fun syncData(startProcessPayload: StartProcessPayload) {
+        for(tag in defaultTlvValues){
+            kernelDatabase.add(
+                BerTlvBuilder().addBytes(BerTag(tag.key.decodeHex()), tag.value).buildTlv()
+            )
+        }
         for (t in startProcessPayload.syncData) {
             if (t.tag.bytes.component1() == 0x6F.toByte()) {
                 kernelDatabase.parseAndStoreCardResponse(startProcessPayload.fciResponse.getParsedData())
@@ -1519,7 +1561,7 @@ class CoProcessKernelC2 {
     }
 
     data class CvmResults(
-        var shouldApplyNext:Boolean = false,
+        var shouldApplyNext: Boolean = false,
         var cvmPerformed: CvmCode = CvmCode.FAIL_CVM,
         var cvmCondition: CvmCondition = CvmCondition.ALWAYS,
         var cvmResult: CvmResult = CvmResult.UNKNOWN,
@@ -1570,8 +1612,12 @@ class CoProcessKernelC2 {
         }
 
         override fun toByteArray(): ByteArray {
-            if(shouldApplyNext){
-                return byteArrayOf(cvmPerformed.value.or(0b1000000), cvmCondition.value, cvmResult.value)
+            if (shouldApplyNext) {
+                return byteArrayOf(
+                    cvmPerformed.value.or(0b1000000),
+                    cvmCondition.value,
+                    cvmResult.value
+                )
             }
             return byteArrayOf(cvmPerformed.value, cvmCondition.value, cvmResult.value)
         }
