@@ -218,12 +218,12 @@ class CoProcessKernelC2 {
         )
     }
 
-    private fun buildOutSignalForParsingError() :OutSignal{
-
+    private fun buildOutSignalForParsingError() :OutSignal?{
+        return null
     }
 
-    private fun buildOutSignalForCardDataMissing():OutSignal{
-
+    private fun buildOutSignalForCardDataMissing():OutSignal?{
+        return null
     }
 
     private fun buildOutSignalForTransmissionError():OutSignal{
