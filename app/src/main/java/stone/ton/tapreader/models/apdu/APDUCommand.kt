@@ -56,6 +56,25 @@ class APDUCommand(
             )
         }
 
+        fun buildGetData(tag: ByteArray): APDUCommand {
+            return if(tag.size == 1){
+                APDUCommand(
+                    class_ = 0x80.toByte(),
+                    instruction = 0xCA.toByte(),
+                    parameter1 = 0x00,
+                    parameter2 = tag[0],
+                )
+            }else{
+                APDUCommand(
+                    class_ = 0x80.toByte(),
+                    instruction = 0xCA.toByte(),
+                    parameter1 = tag[0],
+                    parameter2 = tag[1],
+                )
+            }
+
+        }
+
         fun buildReadRecord(sfi: Byte, record: Byte): APDUCommand {
             return APDUCommand(
                 class_ = 0x00,

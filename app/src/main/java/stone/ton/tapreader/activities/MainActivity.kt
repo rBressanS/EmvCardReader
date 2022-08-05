@@ -1,7 +1,13 @@
 package stone.ton.tapreader.activities
 
 import android.content.Intent
+import android.content.pm.PackageInfo.REQUESTED_PERMISSION_GRANTED
+import android.content.pm.PackageManager
+import android.content.pm.PackageManager.GET_PERMISSIONS
+import android.content.pm.PermissionInfo.PROTECTION_DANGEROUS
+import android.content.pm.PermissionInfo.PROTECTION_SIGNATURE
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.clickable
@@ -17,9 +23,40 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.google.android.material.composethemeadapter.MdcTheme
 
+
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val pm = packageManager
+        // Loop each package requesting <manifest> permissions
+        // Loop each package requesting <manifest> permissions
+        val pi = packageManager.getPackageInfo("app.openmpos.stone.tapton.dev", GET_PERMISSIONS)
+            val requestedPermissions = pi.requestedPermissions
+
+            // Loop each <uses-permission> tag to retrieve the permission flag
+            var i = 0
+            val len = requestedPermissions.size
+            while (i < len) {
+                val requestedPerm = requestedPermissions[i]
+                // Retrieve the protection level for each requested permission
+                var protLevel: Int
+                protLevel = try {
+                    pm.getPermissionInfo(requestedPerm, 0).protectionLevel
+                } catch (e: PackageManager.NameNotFoundException) {
+                    Log.e("TESTE NAO SEI", "Unknown permission: $requestedPerm", e)
+
+                    i++
+                    continue
+                }
+                val system = protLevel == PROTECTION_SIGNATURE
+                val dangerous = protLevel == PROTECTION_DANGEROUS
+                val granted = (pi.requestedPermissionsFlags[i]
+                        and REQUESTED_PERMISSION_GRANTED) != 0
+                i++
+                Log.i("PERMISSIONS", "permission: $requestedPerm")
+                Log.i("PERMISSIONS", "granted: $granted")
+            }
+
         setContent {
             MdcTheme { // or AppCompatTheme
                 FullMainActivity()
